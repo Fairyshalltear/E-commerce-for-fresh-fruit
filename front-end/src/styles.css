@@ -1,0 +1,277 @@
+:root {
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #243129;
+  background: #f7faf5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.page-shell {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 72px;
+  border-bottom: 1px solid #e2e9df;
+}
+
+.brand {
+  color: #28734a;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  color: #53645a;
+  font-size: 14px;
+}
+
+.topbar-actions a:hover,
+.text-button:hover {
+  color: #28734a;
+}
+
+.text-button {
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.welcome {
+  padding: 76px 0 92px;
+}
+
+.eyebrow {
+  color: #347f54;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+h1 {
+  margin: 12px 0;
+  font-size: 36px;
+  font-weight: 650;
+}
+
+.welcome-copy {
+  color: #66746b;
+  font-size: 16px;
+}
+
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.primary-link,
+.secondary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid #28734a;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.primary-link {
+  color: #fff;
+  background: #28734a;
+}
+
+.secondary-link {
+  color: #28734a;
+  background: #fff;
+}
+
+.auth-page {
+  width: min(460px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 34px 0 64px;
+}
+
+.auth-back {
+  color: #53645a;
+  font-size: 14px;
+}
+
+.auth-panel {
+  margin-top: 42px;
+}
+
+.auth-panel h1,
+.account-panel h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 650;
+}
+
+.auth-intro {
+  margin: 10px 0 24px;
+  color: #66746b;
+  font-size: 14px;
+}
+
+.role-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 22px;
+  border-bottom: 1px solid #dce5dc;
+}
+
+.role-switch button {
+  min-height: 42px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: #66746b;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.role-switch button[aria-pressed='true'] {
+  border-bottom-color: #28734a;
+  color: #28734a;
+  font-weight: 650;
+}
+
+.auth-form {
+  display: grid;
+  gap: 16px;
+}
+
+.form-field {
+  display: grid;
+  gap: 7px;
+  color: #34443a;
+  font-size: 14px;
+}
+
+.form-field input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #cbd7cd;
+  border-radius: 4px;
+  padding: 0 12px;
+  color: #243129;
+  background: #fff;
+  font: inherit;
+}
+
+.form-field input:focus {
+  border-color: #28734a;
+  outline: 2px solid #dcefe2;
+}
+
+.auth-submit {
+  min-height: 44px;
+  margin-top: 4px;
+  border: 1px solid #28734a;
+  border-radius: 4px;
+  color: #fff;
+  background: #28734a;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.auth-submit:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.auth-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 14px;
+}
+
+.auth-toggle {
+  margin: 20px 0 0;
+  color: #66746b;
+  font-size: 14px;
+}
+
+.auth-toggle button {
+  border: 0;
+  padding: 0;
+  color: #28734a;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.account-panel {
+  padding: 54px 0;
+}
+
+.account-panel p {
+  color: #66746b;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+@media (max-width: 540px) {
+  .page-shell {
+    width: min(100% - 28px, 1120px);
+  }
+
+  .welcome {
+    padding: 72px 0 88px;
+  }
+
+  h1 {
+    font-size: 30px;
+  }
+
+  .topbar-actions {
+    gap: 12px;
+    font-size: 13px;
+  }
+
+  .welcome {
+    padding: 64px 0 78px;
+  }
+
+  .auth-panel {
+    margin-top: 34px;
+  }
+}

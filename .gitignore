@@ -1,0 +1,25 @@
+.DS_Store
+Thumbs.db
+
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+
+# Frontend dependencies and build output
+front-end/node_modules/
+front-end/dist/
+*.tsbuildinfo
+
+# Backend build output and logs
+back-end/target/
+back-end/logs/
+*.log
+
+# Local uploads and model weights
+**/uploads/
+**/models/
+
+# IDE metadata
+.idea/
+*.iml
