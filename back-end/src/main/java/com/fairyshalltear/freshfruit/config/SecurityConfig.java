@@ -89,6 +89,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/v1/health", "/api/v1/auth/register", "/api/v1/auth/login",
                                 "/api/v1/admin/auth/login", "/api/v1/public/avatars/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/public/products", "/api/v1/public/products/recommendations",
+                                "/api/v1/public/products/{id}", "/api/v1/public/products/{id}/reviews",
+                                "/api/v1/public/categories", "/api/v1/public/product-images/{filename}").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/buyer/**", "/api/v1/auth/buyer/**").hasRole("BUYER")
                         .anyRequest().authenticated())

@@ -35,7 +35,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ApiResponse.error("VALIDATION_ERROR", "请求参数校验失败", errors));
     }
 
-    @ExceptionHandler({HandlerMethodValidationException.class, HttpMessageNotReadableException.class})
+    @ExceptionHandler({HandlerMethodValidationException.class, HttpMessageNotReadableException.class,
+            org.springframework.validation.BindException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+            org.springframework.web.bind.MissingServletRequestParameterException.class,
+            jakarta.validation.ConstraintViolationException.class})
     public ResponseEntity<ApiResponse<Map<String, String>>> handleInvalidRequest(Exception exception) {
         return ResponseEntity.badRequest().body(ApiResponse.error("BAD_REQUEST", "请求格式无效", null));
     }
@@ -50,7 +54,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Map<String, String>>> handleUploadTooLarge(
             MaxUploadSizeExceededException exception) {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(ApiResponse.error("PAYLOAD_TOO_LARGE", "头像图片不能超过 5 MiB", null));
+                .body(ApiResponse.error("PAYLOAD_TOO_LARGE", "图片不能超过 5 MiB", null));
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<?>> handleMethodNotAllowed(Exception exception) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(ApiResponse.error("METHOD_NOT_ALLOWED", "该接口不支持此操作", null));
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<?>> handleIntegrity(Exception exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error("CONFLICT", "数据存在关联或违反约束", null));
     }
 
     @ExceptionHandler(Exception.class)

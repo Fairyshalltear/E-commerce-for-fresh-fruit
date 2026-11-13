@@ -1,6 +1,6 @@
 # 鲜果集：生鲜水果电商平台
 
-毕业答辩版生鲜水果电商平台。当前基础模块包括 Vue 3 前端骨架、Spring Boot REST API、MySQL/Flyway 数据库迁移、统一接口响应、买家注册登录和管理员登录鉴权。商品、购物车、订单等业务模块按 OpenSpec 任务逐步开发。
+毕业答辩版生鲜水果电商平台。当前已实现买家及管理员鉴权、个人资料和地址、商品推荐与搜索、规格详情、收藏，以及后台商品、分类和库存维护。购物车和订单等模块按 OpenSpec 任务继续开发。
 
 ## 技术栈
 
@@ -52,7 +52,7 @@ set +a
 mvn -f back-end/pom.xml spring-boot:run
 ```
 
-服务默认监听 `http://localhost:8080`。启动时 Flyway 会自动执行 `back-end/src/main/resources/db/migration/` 中尚未应用的迁移；当前 V1 创建 `buyer_account` 和 `admin_account`。可用 `flyway_schema_history` 检查迁移状态。
+服务默认监听 `http://localhost:8080`。启动时 Flyway 会自动执行 `back-end/src/main/resources/db/migration/` 中尚未应用的迁移：V1 创建账户，V2 创建地址，V3 创建商品、分类、SKU、图片、库存、流水、收藏、只读评价和管理记录。可用 `flyway_schema_history` 检查迁移状态。
 
 当管理员表为空时，应用使用 `ADMIN_INITIAL_USERNAME` 和 `ADMIN_INITIAL_PASSWORD` 创建首个管理员；管理员已存在时不会覆盖或重置账户。应用不会提供公开管理员注册接口。JWT 密钥必须是 Base64 编码且解码后至少 32 字节，否则应用拒绝启动。
 
@@ -125,3 +125,17 @@ npm run build
 - 在隔离 MySQL 8.0.46 数据库上连续启动后端两次：V1 首次成功应用，第二次提示 schema 已是最新；买家用户名/手机号及管理员用户名唯一索引存在。
 - 按本 README 导出环境变量并启动后端：健康检查正常，管理员登录返回 HTTP 200。
 - `npm run build`：TypeScript 检查与 Vite 生产构建通过。
+
+## 商品浏览与商品管理
+
+商城首页提供商品推荐；`/products` 支持关键词、两级分类、价格区间、排序和分页，`/products/:productId` 展示图片、规格、独立价格、可售库存、商品介绍和评价。买家可收藏，并在 `/account/favorites` 查看或取消收藏。
+
+管理员登录后进入 `/admin/products`，在 `/admin/categories` 建立两级分类。商品编辑支持多图片、多 SKU、推荐标记和顺序。新商品默认下架，保存后可上架；商品只归属二级分类。售罄仍展示，下架/删除或分类不可用的收藏显示失效提示。
+
+V3 自动创建商品相关表，保留现有账户及地址；不用手工建表。新库暂无商品，使用管理界面显式准备演示商品和图片。评价本阶段只展示，提交评价随订单完成校验实现。图片目录由 `PRODUCT_IMAGE_STORAGE_DIR` 配置，默认 `./uploads/products`，与头像分开；数据库备份须包含图片目录。
+
+详细接口、库存规则、图片清理和验收步骤见 [商品 API 与验收](docs/catalog-api.md)。更新代码后重新启动后端，加载新接口及 Flyway 迁移；前端开发服务热更新。不要改写已应用 V1/V2。
+
+`.env` 中带 `&`、`?` 或空格的值应使用引号包裹，再按上文 source 导出，特别是 JDBC URL；密钥和密码仅保留在本机。
+
+2026-11-13 商品模块验证：完整后端测试 40 项通过，另 1 项 MySQL 专用迁移测试在默认 H2 运行中跳过；在两个隔离 MySQL 8.0.46 空库执行 24 项商品集成测试及 1 项迁移测试，全部通过。前端 typecheck/build、管理到商城收藏闭环、390 像素手机与 1280 像素桌面布局检查通过。详见 [商品验收记录](docs/catalog-verification.md)。

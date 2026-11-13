@@ -16,6 +16,8 @@ const router = createRouter({
       name: 'home',
       component: () => import('./views/HomeView.vue'),
     },
+    { path: '/products', name: 'products', component: () => import('./views/ProductsView.vue') },
+    { path: '/products/:productId', name: 'product-detail', component: () => import('./views/ProductDetailView.vue') },
     {
       path: '/login',
       name: 'login',
@@ -27,7 +29,7 @@ const router = createRouter({
       component: () => import('./views/BuyerView.vue'),
       meta: { requiresAuth: true, role: 'BUYER' },
       children: [
-        { path: '', redirect: { name: 'account-profile' } },
+        { path: '', name: 'account-home', redirect: { name: 'account-profile' } },
         {
           path: 'profile',
           name: 'account-profile',
@@ -38,6 +40,7 @@ const router = createRouter({
           name: 'account-addresses',
           component: () => import('./views/BuyerAddressesView.vue'),
         },
+        { path: 'favorites', name: 'account-favorites', component: () => import('./views/BuyerFavoritesView.vue') },
         {
           path: 'security',
           name: 'account-security',
@@ -50,6 +53,13 @@ const router = createRouter({
       name: 'admin',
       component: () => import('./views/AdminView.vue'),
       meta: { requiresAuth: true, role: 'ADMIN' },
+      children: [
+        { path: '', name: 'admin-home', redirect: '/admin/products' },
+        { path: 'products', component: () => import('./views/AdminProductsView.vue') },
+        { path: 'products/new', component: () => import('./views/AdminProductEditView.vue') },
+        { path: 'products/:productId/edit', component: () => import('./views/AdminProductEditView.vue') },
+        { path: 'categories', component: () => import('./views/AdminCategoriesView.vue') },
+      ],
     },
   ],
 })

@@ -26,6 +26,7 @@
           <Location class="account-nav-icon" aria-hidden="true" />
           收货地址
         </RouterLink>
+        <RouterLink to="/account/favorites" active-class="account-nav-active">♡ 我的收藏</RouterLink>
         <RouterLink to="/account/security" active-class="account-nav-active">
           <Lock class="account-nav-icon" aria-hidden="true" />
           账户安全
