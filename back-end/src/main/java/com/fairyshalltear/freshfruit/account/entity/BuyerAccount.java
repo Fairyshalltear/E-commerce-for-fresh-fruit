@@ -3,6 +3,7 @@ package com.fairyshalltear.freshfruit.account.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import java.time.LocalDateTime;
 
 @TableName("buyer_account")
 public class BuyerAccount {
@@ -14,6 +15,8 @@ public class BuyerAccount {
     private String nickname;
     private String avatarUrl;
     private Integer status;
+    private Long credentialVersion;
+    private LocalDateTime createdAt;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -29,4 +32,8 @@ public class BuyerAccount {
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
+    public Long getCredentialVersion() { return credentialVersion; }
+    public void setCredentialVersion(Long credentialVersion) { this.credentialVersion = credentialVersion; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

@@ -133,6 +133,47 @@ class AuthenticationIntegrationTest {
     }
 
     @Test
+    void buyerTokensAreRevokedWhenDisabledAndRemainRevokedAfterReactivationOrCredentialReset() throws Exception {
+        MvcResult registration = mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"username":"revokedbuyer","phone":"13800000003","password":"BuyerPassword123!"}
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+        String oldToken = tokenFrom(registration);
+        BuyerAccount buyer = buyers.selectOne(new LambdaQueryWrapper<BuyerAccount>()
+                .eq(BuyerAccount::getUsername, "revokedbuyer"));
+
+        buyer.setStatus(0);
+        buyer.setCredentialVersion(buyer.getCredentialVersion() + 1);
+        buyers.updateById(buyer);
+        mockMvc.perform(get("/api/v1/auth/buyer/me").header("Authorization", "Bearer " + oldToken))
+                .andExpect(status().isUnauthorized());
+
+        buyer.setStatus(1);
+        buyers.updateById(buyer);
+        mockMvc.perform(get("/api/v1/auth/buyer/me").header("Authorization", "Bearer " + oldToken))
+                .andExpect(status().isUnauthorized());
+
+        MvcResult freshLogin = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"usernameOrPhone":"revokedbuyer","password":"BuyerPassword123!"}
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+        String freshToken = tokenFrom(freshLogin);
+        mockMvc.perform(get("/api/v1/auth/buyer/me").header("Authorization", "Bearer " + freshToken))
+                .andExpect(status().isOk());
+
+        buyer.setCredentialVersion(buyer.getCredentialVersion() + 1);
+        buyers.updateById(buyer);
+        mockMvc.perform(get("/api/v1/auth/buyer/me").header("Authorization", "Bearer " + freshToken))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void initializesAdminFromEnvironmentAndKeepsInitializationIdempotent() throws Exception {
         assertEquals(1L, admins.selectCount(new QueryWrapper<>()));
         adminBootstrap.run(new org.springframework.boot.DefaultApplicationArguments(new String[0]));

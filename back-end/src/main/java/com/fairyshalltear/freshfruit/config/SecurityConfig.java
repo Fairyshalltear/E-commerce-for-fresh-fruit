@@ -28,6 +28,9 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -69,18 +72,39 @@ public class SecurityConfig {
     }
 
     @Bean
-    JwtAuthenticationConverter jwtAuthenticationConverter() {
+    Converter<Jwt, ? extends org.springframework.security.authentication.AbstractAuthenticationToken> jwtAuthenticationConverter(
+            com.fairyshalltear.freshfruit.account.mapper.BuyerAccountMapper buyers) {
         JwtGrantedAuthoritiesConverter authorities = new JwtGrantedAuthoritiesConverter();
         authorities.setAuthoritiesClaimName("roles");
         authorities.setAuthorityPrefix("ROLE_");
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(authorities);
-        return converter;
+        JwtAuthenticationConverter delegate = new JwtAuthenticationConverter();
+        delegate.setJwtGrantedAuthoritiesConverter(authorities);
+        return jwt -> {
+            var authentication = delegate.convert(jwt);
+            if (jwt.getClaimAsStringList("roles") != null
+                    && jwt.getClaimAsStringList("roles").contains("BUYER")) {
+                try {
+                    long buyerId = Long.parseLong(jwt.getSubject());
+                    Number claimVersion = jwt.getClaim("credentialVersion");
+                    long tokenVersion = claimVersion == null ? 0 : claimVersion.longValue();
+                    var buyer = buyers.selectById(buyerId);
+                    if (buyer == null || buyer.getStatus() == null || buyer.getStatus() != 1
+                            || (buyer.getCredentialVersion() == null ? 0 : buyer.getCredentialVersion()) != tokenVersion) {
+                        throw new BadCredentialsException("Buyer token is no longer valid");
+                    }
+                } catch (BadCredentialsException exception) {
+                    throw exception;
+                } catch (RuntimeException exception) {
+                    throw new BadCredentialsException("Unable to validate buyer token", exception);
+                }
+            }
+            return authentication;
+        };
     }
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper,
-            JwtAuthenticationConverter jwtAuthenticationConverter) throws Exception {
+            Converter<Jwt, ? extends org.springframework.security.authentication.AbstractAuthenticationToken> jwtAuthenticationConverter) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)

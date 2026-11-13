@@ -26,16 +26,28 @@ public class JwtTokenService {
     }
 
     public AuthSession issue(Long accountId, String username, String displayName, String role) {
+        return issue(accountId, username, displayName, role, null);
+    }
+
+    public AuthSession issueBuyer(Long accountId, String username, String displayName, long credentialVersion) {
+        return issue(accountId, username, displayName, "BUYER", credentialVersion);
+    }
+
+    private AuthSession issue(Long accountId, String username, String displayName, String role,
+            Long credentialVersion) {
         Instant now = Instant.now();
         Instant expiresAt = now.plusSeconds(expirationMinutes * 60);
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        var claimsBuilder = JwtClaimsSet.builder()
                 .issuer("fresh-fruit")
                 .issuedAt(now)
                 .expiresAt(expiresAt)
                 .subject(accountId.toString())
                 .claim("roles", List.of(role))
-                .claim("role", role)
-                .build();
+                .claim("role", role);
+        if (credentialVersion != null) {
+            claimsBuilder.claim("credentialVersion", credentialVersion);
+        }
+        JwtClaimsSet claims = claimsBuilder.build();
         String token = encoder.encode(JwtEncoderParameters.from(
                 JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
         return new AuthSession(token, "Bearer", expirationMinutes * 60,

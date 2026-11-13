@@ -18,6 +18,7 @@ const router = createRouter({
     },
     { path: '/products', name: 'products', component: () => import('./views/ProductsView.vue') },
     { path: '/products/:productId', name: 'product-detail', component: () => import('./views/ProductDetailView.vue') },
+    { path: '/cart', name: 'cart', component: () => import('./views/CartView.vue'), meta: { requiresAuth: true, role: 'BUYER' } },
     {
       path: '/login',
       name: 'login',
@@ -59,6 +60,8 @@ const router = createRouter({
         { path: 'products/new', component: () => import('./views/AdminProductEditView.vue') },
         { path: 'products/:productId/edit', component: () => import('./views/AdminProductEditView.vue') },
         { path: 'categories', component: () => import('./views/AdminCategoriesView.vue') },
+        { path: 'buyers', component: () => import('./views/AdminBuyersView.vue') },
+        { path: 'buyers/:buyerId', component: () => import('./views/AdminBuyerDetailView.vue') },
       ],
     },
   ],

@@ -62,7 +62,8 @@ public class AuthService {
         } catch (DuplicateKeyException exception) {
             throw new ApiException("CONFLICT", "用户名或手机号已被使用", HttpStatus.CONFLICT);
         }
-        return tokens.issue(buyer.getId(), buyer.getUsername(), buyer.getNickname(), "BUYER");
+        return tokens.issueBuyer(buyer.getId(), buyer.getUsername(), buyer.getNickname(),
+                buyer.getCredentialVersion() == null ? 0 : buyer.getCredentialVersion());
     }
 
     public AuthSession loginBuyer(BuyerLoginRequest request) {
@@ -76,7 +77,8 @@ public class AuthService {
                 || !passwordEncoder.matches(request.password(), buyer == null ? "" : buyer.getPasswordHash())) {
             throw unauthorized();
         }
-        return tokens.issue(buyer.getId(), buyer.getUsername(), buyer.getNickname(), "BUYER");
+        return tokens.issueBuyer(buyer.getId(), buyer.getUsername(), buyer.getNickname(),
+                buyer.getCredentialVersion() == null ? 0 : buyer.getCredentialVersion());
     }
 
     public AuthSession loginAdmin(AdminLoginRequest request) {

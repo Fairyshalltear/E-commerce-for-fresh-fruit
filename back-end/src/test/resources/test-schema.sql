@@ -5,7 +5,10 @@ CREATE TABLE buyer_account (
     password_hash VARCHAR(100) NOT NULL,
     nickname VARCHAR(50),
     avatar_url VARCHAR(500),
-    status INTEGER NOT NULL DEFAULT 1
+    status INTEGER NOT NULL DEFAULT 1,
+    credential_version BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE admin_account (
@@ -104,3 +107,17 @@ CREATE TABLE product_review (
  FOREIGN KEY(buyer_id) REFERENCES buyer_account(id), CHECK(rating BETWEEN 1 AND 5), CHECK(status IN (0,1))
 );
 CREATE INDEX idx_review_product_time ON product_review(product_id,status,created_at,id);
+CREATE TABLE cart_item (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    buyer_id BIGINT NOT NULL,
+    sku_id BIGINT NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    selected INTEGER NOT NULL DEFAULT 1 CHECK (selected IN (0, 1)),
+    accepted_unit_price DECIMAL(10,2) NOT NULL CHECK (accepted_unit_price > 0),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_cart_item_buyer_sku UNIQUE (buyer_id, sku_id),
+    FOREIGN KEY (buyer_id) REFERENCES buyer_account (id) ON DELETE CASCADE,
+    FOREIGN KEY (sku_id) REFERENCES product_sku (id)
+);
+CREATE INDEX idx_cart_item_buyer_created ON cart_item(buyer_id, created_at, id);
