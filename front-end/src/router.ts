@@ -26,6 +26,24 @@ const router = createRouter({
       name: 'account',
       component: () => import('./views/BuyerView.vue'),
       meta: { requiresAuth: true, role: 'BUYER' },
+      children: [
+        { path: '', redirect: { name: 'account-profile' } },
+        {
+          path: 'profile',
+          name: 'account-profile',
+          component: () => import('./views/BuyerProfileView.vue'),
+        },
+        {
+          path: 'addresses',
+          name: 'account-addresses',
+          component: () => import('./views/BuyerAddressesView.vue'),
+        },
+        {
+          path: 'security',
+          name: 'account-security',
+          component: () => import('./views/BuyerSecurityView.vue'),
+        },
+      ],
     },
     {
       path: '/admin',

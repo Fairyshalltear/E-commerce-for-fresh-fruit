@@ -80,5 +80,13 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('fresh-fruit-session')
   }
 
-  return { session, isAuthenticated, register, loginBuyer, loginAdmin, logout }
+  function updateDisplayName(displayName: string) {
+    if (!session.value) return
+    saveSession({
+      ...session.value,
+      account: { ...session.value.account, displayName },
+    })
+  }
+
+  return { session, isAuthenticated, register, loginBuyer, loginAdmin, logout, updateDisplayName }
 })

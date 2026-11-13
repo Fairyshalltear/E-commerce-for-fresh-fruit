@@ -88,7 +88,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/v1/health", "/api/v1/auth/register", "/api/v1/auth/login",
-                                "/api/v1/admin/auth/login").permitAll()
+                                "/api/v1/admin/auth/login", "/api/v1/public/avatars/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/buyer/**", "/api/v1/auth/buyer/**").hasRole("BUYER")
                         .anyRequest().authenticated())

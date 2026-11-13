@@ -1,22 +1,45 @@
 <template>
-  <main class="page-shell">
+  <main class="account-page page-shell">
     <header class="topbar">
       <RouterLink class="brand" to="/">鲜果集</RouterLink>
-      <button class="text-button" type="button" @click="signOut">退出登录</button>
-    </header>
-    <section class="account-panel">
-      <p class="eyebrow">买家账户</p>
-      <h1>你好，{{ auth.session?.account.displayName }}</h1>
-      <p>用户名：{{ auth.session?.account.username }}</p>
-      <p>身份：买家</p>
-      <div class="account-actions">
-        <RouterLink class="primary-link" to="/">返回商城首页</RouterLink>
+      <div class="topbar-actions">
+        <RouterLink to="/">商城首页</RouterLink>
+        <button class="text-button" type="button" @click="signOut">退出登录</button>
       </div>
-    </section>
+    </header>
+
+    <div class="account-heading">
+      <div>
+        <p class="eyebrow">买家账户</p>
+        <h1>个人中心</h1>
+      </div>
+      <span class="account-identity">{{ auth.session?.account.displayName }}</span>
+    </div>
+
+    <div class="account-layout">
+      <aside class="account-sidebar" aria-label="个人中心导航">
+        <RouterLink to="/account/profile" active-class="account-nav-active">
+          <User class="account-nav-icon" aria-hidden="true" />
+          个人资料
+        </RouterLink>
+        <RouterLink to="/account/addresses" active-class="account-nav-active">
+          <Location class="account-nav-icon" aria-hidden="true" />
+          收货地址
+        </RouterLink>
+        <RouterLink to="/account/security" active-class="account-nav-active">
+          <Lock class="account-nav-icon" aria-hidden="true" />
+          账户安全
+        </RouterLink>
+      </aside>
+      <section class="account-content">
+        <RouterView />
+      </section>
+    </div>
   </main>
 </template>
 
 <script setup lang="ts">
+import { Location, Lock, User } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
