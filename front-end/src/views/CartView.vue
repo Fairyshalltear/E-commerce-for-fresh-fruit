@@ -17,19 +17,21 @@
           <div class="cart-item-actions"><button v-if="item.priceChanged && item.purchasable" class="text-action" :disabled="busyId === item.id" @click="acceptPrice(item)">接受新价</button><button class="text-action danger-text" :disabled="busyId === item.id" @click="remove(item)">删除</button></div>
         </article>
       </div>
-      <div class="cart-summary"><p v-if="checkoutMessage" :class="checkoutValid ? 'form-message-success' : 'form-message-error'" role="status">{{ checkoutMessage }}</p><div><span>已选 {{ cart.selectedCount }} 件商品</span><strong>商品合计 <b>¥{{ price(cart.selectedSubtotal) }}</b></strong></div><p class="muted">运费 ¥{{ price(cart.shippingFee) }}</p><button class="primary-button" :disabled="checkoutBusy || !cart.selectedCount" @click="validateCheckout">{{ checkoutBusy ? '校验中…' : '校验结算商品' }}</button></div>
+      <div class="cart-summary"><p v-if="checkoutMessage" :class="checkoutValid ? 'form-message-success' : 'form-message-error'" role="status">{{ checkoutMessage }}</p><div><span>已选 {{ cart.selectedCount }} 件商品</span><strong>商品合计 <b>¥{{ price(cart.selectedSubtotal) }}</b></strong></div><p class="muted">运费 ¥{{ price(cart.shippingFee) }}</p><button class="primary-button" :disabled="checkoutBusy || !cart.selectedCount" @click="validateCheckout">{{ checkoutBusy ? '校验中…' : '去结算' }}</button></div>
     </template>
   </main>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import StoreHeader from '../components/StoreHeader.vue'
 import PageStatus from '../components/PageStatus.vue'
 import { errorMessage, imageUrl, price } from '../api/catalog'
 import { acceptCartPrice, getCart, removeCartItem, selectAllCartItems, selectCartItem, updateCartQuantity, validateCartCheckout, type Cart, type CartItem } from '../api/cart'
 
 const cart = ref<Cart | null>(null), loading = ref(false), error = ref(''), notice = ref(''), busyId = ref<number | null>(null)
+const router = useRouter()
 const checkoutBusy = ref(false), checkoutMessage = ref(''), checkoutValid = ref(false)
 const allSelected = computed(() => Boolean(cart.value?.items.length) && cart.value!.items.every(item => item.selected))
 const someSelected = computed(() => Boolean(cart.value?.items.some(item => item.selected)))
@@ -41,7 +43,7 @@ async function selectAll(selected: boolean) { notice.value = ''; try { cart.valu
 function changeQuantity(item: CartItem, value: string) { const quantity = Number(value); if (!Number.isInteger(quantity) || quantity < 1) { notice.value = '数量必须为正整数'; return } return runItem(item, () => updateCartQuantity(item.id, quantity)) }
 function remove(item: CartItem) { return runItem(item, () => removeCartItem(item.id)) }
 function acceptPrice(item: CartItem) { return runItem(item, () => acceptCartPrice(item.id, item.currentUnitPrice)) }
-async function validateCheckout() { checkoutBusy.value = true; checkoutMessage.value = ''; try { const result = await validateCartCheckout(); cart.value = result.cart; checkoutValid.value = result.valid; checkoutMessage.value = result.message } catch (e) { checkoutValid.value = false; checkoutMessage.value = errorMessage(e) } finally { checkoutBusy.value = false } }
+async function validateCheckout() { checkoutBusy.value = true; checkoutMessage.value = ''; try { const result = await validateCartCheckout(); cart.value = result.cart; checkoutValid.value = result.valid; checkoutMessage.value = result.message; if (result.valid) await router.push({ name: 'checkout' }) } catch (e) { checkoutValid.value = false; checkoutMessage.value = errorMessage(e) } finally { checkoutBusy.value = false } }
 function unavailableText(item: CartItem) { return item.unavailableReason === 'OUT_OF_STOCK' ? '库存不足，暂不可购买' : '商品或规格当前不可购买' }
 onMounted(load)
 </script>

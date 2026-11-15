@@ -1,6 +1,6 @@
 # 鲜果集：生鲜水果电商平台
 
-毕业答辩版生鲜水果电商平台。当前已实现买家及管理员鉴权、个人资料和地址、商品推荐与搜索、规格详情、收藏、购物车，以及后台商品、分类、库存和买家账户管理。订单模块后续开发；购物车结算目前只校验商品状态、价格和库存，不创建订单或预留库存。
+毕业答辩版生鲜水果电商平台。已实现买家及管理员鉴权、个人资料和地址、商品目录、收藏、购物车、订单履约、模拟支付、模拟物流、退款退货及评价治理。
 
 ## 技术栈
 
@@ -52,7 +52,7 @@ set +a
 mvn -f back-end/pom.xml spring-boot:run
 ```
 
-服务默认监听 `http://localhost:8080`。启动时 Flyway 会自动执行 `back-end/src/main/resources/db/migration/` 中尚未应用的迁移：V1 创建账户，V2 创建地址，V3 创建商品、分类、SKU、图片、库存、流水、收藏、只读评价和管理记录，V4 增加买家凭据版本并创建购物车表。可用 `flyway_schema_history` 检查迁移状态。
+服务默认监听 `http://localhost:8080`。启动时 Flyway 会自动执行 `back-end/src/main/resources/db/migration/` 中尚未应用的迁移：V1–V4 创建账户、地址、商品/库存/评价基础表及购物车，V5 创建订单、支付、发货物流、售后和评价删除审计表。可用 `flyway_schema_history` 检查迁移状态。
 
 当管理员表为空时，应用使用 `ADMIN_INITIAL_USERNAME` 和 `ADMIN_INITIAL_PASSWORD` 创建首个管理员；管理员已存在时不会覆盖或重置账户。应用不会提供公开管理员注册接口。JWT 密钥必须是 Base64 编码且解码后至少 32 字节，否则应用拒绝启动。
 
@@ -66,7 +66,7 @@ npm ci
 npm run dev
 ```
 
-打开 Vite 输出的本地地址，默认是 `http://localhost:5173`。开发服务器会将 `/api` 请求代理到 `http://localhost:8080`；如需更改后端地址，可设置 `VITE_API_PROXY_TARGET`。前端提供买家注册/登录、管理员登录入口、令牌持久化、退出登录和买家/管理员路由角色保护。买家可在商品详情加购，并在 `/cart` 修改数量、删除条目、选择结算项和确认价格变化；管理员不显示购物操作。管理员可在 `/admin/buyers` 分页搜索买家、查看基础资料、启用/禁用账户及设置临时密码，账户状态变更或密码重置会使旧买家令牌失效。
+打开 Vite 输出的本地地址，默认是 `http://localhost:5173`。开发服务器会将 `/api` 请求代理到 `http://localhost:8080`；如需更改后端地址，可设置 `VITE_API_PROXY_TARGET`。买家可从 `/cart` 或商品详情立即购买进入共用结算页，在 `/account/orders` 查询和处理订单、申请售后、登记退货物流及提交已完成订单评价。管理员可在 `/admin/orders` 发货和登记模拟物流，在 `/admin/after-sales` 审核退款/退货并登记退款和入库数量，在 `/admin/reviews` 按原因删除违规评价；买家管理位于 `/admin/buyers`。账户身份始终以服务端 JWT 为准。
 
 ## API 快速验证
 
@@ -115,11 +115,13 @@ cd front-end
 npm run build
 ```
 
-后端集成测试使用内存 H2，不要求启动 MySQL；真实本地运行仍使用 MySQL 8 和 Flyway。每次启动新数据库时，V4 会自动创建 `cart_item` 并初始化买家 `credential_version`。迁移完成后可按以下步骤做冒烟验收：创建或登录买家、打开商品详情加入 SKU、刷新 `/cart` 确认条目仍在、调整数量并验证金额；再以管理员登录 `/admin/buyers`，搜索该买家、查看详情并测试禁用/启用及重置临时密码。禁用或重置后，用操作前的买家令牌请求受保护 API 应返回未授权；购物车校验仅返回校验结果，不会生成订单或占用库存。
+后端集成测试使用内存 H2，不要求启动 MySQL；真实本地运行仍使用 MySQL 8 和 Flyway。新库启动后 V4 创建 `cart_item` 并初始化买家 `credential_version`，V5 创建交易相关表。建议冒烟验收：创建商品和地址，加入购物车进入结算或商品页立即购买，提交订单后使用模拟支付、管理员发货、买家确认收货并评价；再验证售后申请和后台审核，以及公开评价列表的删除过滤。买家/管理员的越权请求应被拒绝。
 
-购物车接口及错误响应见 [购物车 API](docs/cart-api.md)，管理员买家管理接口见 [买家管理 API](docs/buyer-management-api.md)。
+购物车接口及错误响应见 [购物车 API](docs/cart-api.md)，订单、售后与评价接口见 [订单、售后与评价 API](docs/order-after-sales-reviews-api.md)，管理员买家管理接口见 [买家管理 API](docs/buyer-management-api.md)。
 
-要验证从旧版 schema 升级至 V4，请准备一个**专用、空白、可丢弃**的 MySQL 测试数据库（不要指向开发或生产业务库），然后设置迁移测试环境变量并运行测试。测试会先迁移到 V2 写入一条旧版本买家/地址数据，再升级到最新版本，检查数据保留、V4 字段与购物车表，并重复迁移确认幂等：
+订单未付款超时默认 15 分钟，可通过 `ORDER_UNPAID_TIMEOUT_MINUTES` 调整。支付宝/微信付款、退款和物流轨迹均为本地模拟，不发起外部请求。真实支付或物流供应商接入需单独实现适配器、安全回调及凭据配置。本地 H2 测试 schema 与 V5 迁移同步维护。
+
+要验证从旧版 schema 升级至 V5，请准备一个**专用、空白、可丢弃**的 MySQL 测试数据库（不要指向开发或生产业务库），然后设置迁移测试环境变量并运行测试。测试会先迁移到 V2 写入一条旧版本买家/地址数据，再升级到最新版本，检查数据保留、V4 字段、购物车和订单售后表，并重复迁移确认幂等：
 
 ```bash
 export CATALOG_MIGRATION_DB_URL='jdbc:mysql://127.0.0.1:3306/fresh_fruit_migration_test?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai'
@@ -128,9 +130,9 @@ export CATALOG_TEST_DB_PASSWORD='替换为测试数据库密码'
 mvn -f back-end/pom.xml -Dtest=MySqlMigrationTest test
 ```
 
-成功后可在该专用库的 `flyway_schema_history` 确认 V1-V4 均已应用。测试库初始必须为空，测试会创建 schema 对象和固定 ID 的迁移验证数据。
+成功后可在该专用库的 `flyway_schema_history` 确认 V1-V5 均已应用。测试库初始必须为空，测试会创建 schema 对象和固定 ID 的迁移验证数据。
 
-2026-11-14 购物车与买家管理验收：`mvn -f back-end/pom.xml test` 共 48 项通过、0 失败，MySQL 专用迁移测试默认跳过；`npm run build` 的 TypeScript 检查和生产构建通过。另在隔离 MySQL 8.0.46 随机临时库运行 `MySqlMigrationTest`，从空库迁移至 V2、写入旧版买家/地址数据，再升级 V3/V4；数据保留、V4 schema、重复迁移和 Flyway 校验均通过，临时库已清理。OpenSpec 严格校验通过。
+历史验收记录见下文。订单模块最近一次验证结果见下方 2026-11-15 记录。
 
 ## 验证记录
 
@@ -147,10 +149,12 @@ mvn -f back-end/pom.xml -Dtest=MySqlMigrationTest test
 
 管理员登录后进入 `/admin/products`，在 `/admin/categories` 建立两级分类。商品编辑支持多图片、多 SKU、推荐标记和顺序。新商品默认下架，保存后可上架；商品只归属二级分类。售罄仍展示，下架/删除或分类不可用的收藏显示失效提示。
 
-V3 自动创建商品相关表，保留现有账户及地址；不用手工建表。新库暂无商品，使用管理界面显式准备演示商品和图片。评价本阶段只展示，提交评价随订单完成校验实现。图片目录由 `PRODUCT_IMAGE_STORAGE_DIR` 配置，默认 `./uploads/products`，与头像分开；数据库备份须包含图片目录。
+V3 自动创建商品相关表，保留现有账户及地址；不用手工建表。新库暂无商品，使用管理界面显式准备演示商品和图片。商品评价现与已完成订单明细关联，评价及删除审计由 V5 支持。图片目录由 `PRODUCT_IMAGE_STORAGE_DIR` 配置，默认 `./uploads/products`，与头像分开；数据库备份须包含图片目录。
 
 详细接口、库存规则、图片清理和验收步骤见 [商品 API 与验收](docs/catalog-api.md)。更新代码后重新启动后端，加载新接口及 Flyway 迁移；前端开发服务热更新。不要改写已应用 V1/V2。
 
 `.env` 中带 `&`、`?` 或空格的值应使用引号包裹，再按上文 source 导出，特别是 JDBC URL；密钥和密码仅保留在本机。
 
 2026-11-13 商品模块验证：完整后端测试 40 项通过，另 1 项 MySQL 专用迁移测试在默认 H2 运行中跳过；在两个隔离 MySQL 8.0.46 空库执行 24 项商品集成测试及 1 项迁移测试，全部通过。前端 typecheck/build、管理到商城收藏闭环、390 像素手机与 1280 像素桌面布局检查通过。详见 [商品验收记录](docs/catalog-verification.md)。
+
+2026-11-15 订单、售后与评价验证：后端完整测试 61 项、0 失败，默认跳过 1 项专用 MySQL 测试；订单生命周期专项测试 12 项通过。修正了订单筛选集成测试使用固定日期导致跨日失败的问题。隔离 `fresh_fruit_migration_test` 库的 MySQL V1–V5 升级、旧数据保留、重复迁移和 Flyway 校验已于 2026-11-14 验证通过。前端 `npm run typecheck`、`npm run build` 通过；认证买家订单/结算空态在 390px 与 1280px 视口无横向溢出，买家访问管理员路由会被重定向。当前隔离验收库无商品，完整下单/支付/售后/评价的浏览器交互仍需准备带有效商品图片的测试商品后执行；此前管理员订单、售后和评价页面的空态桌面/移动检查通过。

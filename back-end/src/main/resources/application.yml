@@ -20,6 +20,9 @@ server:
   port: ${SERVER_PORT:8080}
 
 freshfruit:
+  order:
+    unpaid-timeout-minutes: ${ORDER_UNPAID_TIMEOUT_MINUTES:15}
+    expiration-scan-ms: ${ORDER_EXPIRATION_SCAN_MS:60000}
   product-images:
     storage-dir: ${PRODUCT_IMAGE_STORAGE_DIR:./uploads/products}
   avatar:

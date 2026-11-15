@@ -19,6 +19,7 @@ const router = createRouter({
     { path: '/products', name: 'products', component: () => import('./views/ProductsView.vue') },
     { path: '/products/:productId', name: 'product-detail', component: () => import('./views/ProductDetailView.vue') },
     { path: '/cart', name: 'cart', component: () => import('./views/CartView.vue'), meta: { requiresAuth: true, role: 'BUYER' } },
+    { path: '/checkout', name: 'checkout', component: () => import('./views/BuyerCheckoutView.vue'), meta: { requiresAuth: true, role: 'BUYER' } },
     {
       path: '/login',
       name: 'login',
@@ -31,6 +32,7 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'BUYER' },
       children: [
         { path: '', name: 'account-home', redirect: { name: 'account-profile' } },
+        { path: 'orders', name: 'account-orders', component: () => import('./views/BuyerOrdersView.vue') },
         {
           path: 'profile',
           name: 'account-profile',
@@ -62,6 +64,9 @@ const router = createRouter({
         { path: 'categories', component: () => import('./views/AdminCategoriesView.vue') },
         { path: 'buyers', component: () => import('./views/AdminBuyersView.vue') },
         { path: 'buyers/:buyerId', component: () => import('./views/AdminBuyerDetailView.vue') },
+        { path: 'orders', name: 'admin-orders', component: () => import('./views/AdminOrdersView.vue') },
+        { path: 'after-sales', name: 'admin-after-sales', component: () => import('./views/AdminAfterSalesView.vue') },
+        { path: 'reviews', name: 'admin-reviews', component: () => import('./views/AdminReviewsView.vue') },
       ],
     },
   ],

@@ -17,6 +17,9 @@ public class ProductReview {
     private String specificationSnapshot;
     private Integer status;
     private LocalDateTime createdAt;
+    private LocalDateTime deletedAt;
+    private Long deletedBy;
+    private String deletionReason;
     public Long getId() { return id; }
     public void setId(Long value) { id = value; }
     public Long getProductId() { return productId; }
@@ -37,4 +40,10 @@ public class ProductReview {
     public void setStatus(Integer value) { status = value; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime value) { createdAt = value; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime value) { deletedAt = value; }
+    public Long getDeletedBy() { return deletedBy; }
+    public void setDeletedBy(Long value) { deletedBy = value; }
+    public String getDeletionReason() { return deletionReason; }
+    public void setDeletionReason(String value) { deletionReason = value; }
 }

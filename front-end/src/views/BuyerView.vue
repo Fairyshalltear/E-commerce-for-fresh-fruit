@@ -18,6 +18,7 @@
 
     <div class="account-layout">
       <aside class="account-sidebar" aria-label="个人中心导航">
+        <RouterLink to="/account/orders" active-class="account-nav-active">我的订单</RouterLink>
         <RouterLink to="/account/profile" active-class="account-nav-active">
           <User class="account-nav-icon" aria-hidden="true" />
           个人资料

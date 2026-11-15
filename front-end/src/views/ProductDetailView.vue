@@ -11,6 +11,7 @@
         <div v-if="auth.session?.account.role !== 'ADMIN'" class="purchase-actions">
           <label class="form-field">购买数量<input v-model.number="quantity" type="number" min="1" :max="selected?.availableStock ?? 1" step="1" :disabled="!selected?.availableStock"></label>
           <button class="primary-button" :disabled="cartBusy || !selected?.availableStock" @click="addToCart">{{ cartBusy ? '正在加入…' : '加入购物车' }}</button>
+          <button class="secondary-button" :disabled="cartBusy || !selected?.availableStock" @click="buyNow">立即购买</button>
         </div>
         <p v-if="cartMessage" class="form-message-success" role="status">{{ cartMessage }}</p>
         <p v-if="cartError" class="form-message-error" role="alert">{{ cartError }}</p>
@@ -59,6 +60,12 @@ async function addToCart() {
   try { await addCartItem(selected.value.id, quantity.value); cartMessage.value = '已加入购物车' }
   catch (e) { cartError.value = errorMessage(e) }
   finally { cartBusy.value = false }
+}
+async function buyNow() {
+  if (!auth.session) { await router.push({ path: '/login', query: { redirect: route.fullPath } }); return }
+  if (auth.session.account.role !== 'BUYER' || !selected.value) return
+  if (!Number.isInteger(quantity.value) || quantity.value < 1 || quantity.value > selected.value.availableStock) { cartError.value = '购买数量需为正整数且不能超过可售库存'; return }
+  await router.push({ name: 'checkout', query: { skuId: String(selected.value.id), quantity: String(quantity.value) } })
 }
 function changeReviewPage(page: number) { reviewPage.value = page; void loadReviews() }
 watch(() => route.params.productId, load, { immediate: true })
