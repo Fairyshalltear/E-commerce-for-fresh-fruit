@@ -40,3 +40,5 @@ export async function reviewAfterSale(id: number, approved: boolean, reason: str
 export async function receiveAfterSale(id: number, items: { orderItemId: number; refundQuantity: number; restockQuantity: number }[]) { return (await http.post<ApiResponse<AfterSale>>(`/api/v1/admin/after-sales/${id}/receive`, { items })).data.data }
 export async function listAdminReviews(params: Record<string, unknown>) { return (await http.get<ApiResponse<Page<AdminReview>>>('/api/v1/admin/reviews', { params })).data.data }
 export async function deleteAdminReview(id: number, reason: string) { await http.post<ApiResponse<null>>(`/api/v1/admin/reviews/${id}/delete`, { reason }) }
+
+export const getAdminAfterSale = async (id: number) => (await http.get<ApiResponse<AfterSale>>('/api/v1/admin/after-sales/' + id)).data.data

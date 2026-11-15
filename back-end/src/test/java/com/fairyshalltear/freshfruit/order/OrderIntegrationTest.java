@@ -393,6 +393,11 @@ class OrderIntegrationTest {
         mvc.perform(post("/api/v1/admin/after-sales/"+returnId+"/receive").header("Authorization",bearer(admin)).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"items\":[{\"orderItemId\":"+returnLine+",\"refundQuantity\":1,\"restockQuantity\":2}]}" )).andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("COMPLETED"));
         assertEquals(10,stocks.selectById(returnFixture.skuId).getOnHand());
+        var incoming=movements.selectList(new QueryWrapper<InventoryMovement>().eq("sku_id",returnFixture.skuId).eq("type","RETURN_RESTOCK"));
+        assertEquals(1,incoming.size());assertEquals("AFTER_SALE",incoming.get(0).getSourceType());assertEquals(returnId,incoming.get(0).getSourceId());
+        var outgoing=movements.selectList(new QueryWrapper<InventoryMovement>().eq("sku_id",returnFixture.skuId).eq("type","ORDER_DISPATCH"));
+        assertEquals(1,outgoing.size());assertEquals("ORDER",outgoing.get(0).getSourceType());assertEquals(returnOrder,outgoing.get(0).getSourceId());
+
         String otherBuyer=buyerToken("reviewotherbuyer");
         mvc.perform(post("/api/v1/buyer/reviews").header("Authorization",bearer(buyer)).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderItemId\":"+orderItemId(rejectedOrder)+",\"rating\":5,\"content\":\"未完成订单评价\"}" )).andExpect(status().isConflict());

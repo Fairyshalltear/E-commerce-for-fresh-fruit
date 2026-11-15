@@ -218,3 +218,34 @@ CREATE TABLE product_review_deletion_audit (
  FOREIGN KEY (review_id) REFERENCES product_review(id), FOREIGN KEY (admin_id) REFERENCES admin_account(id)
 );
 CREATE INDEX idx_review_delete_audit ON product_review_deletion_audit(review_id,created_at,id);
+
+CREATE TABLE inventory_document (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, document_no VARCHAR(60) NOT NULL UNIQUE,
+ type VARCHAR(30) NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+ supplier VARCHAR(100) NOT NULL DEFAULT '', reference_no VARCHAR(100) NOT NULL DEFAULT '', reason VARCHAR(200) NOT NULL DEFAULT '',
+ version BIGINT NOT NULL DEFAULT 0, created_by BIGINT NOT NULL, posted_by BIGINT NULL,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, posted_at DATETIME NULL,
+ FOREIGN KEY(created_by) REFERENCES admin_account(id), FOREIGN KEY(posted_by) REFERENCES admin_account(id),
+ CHECK(type IN ('PURCHASE_IN','SUPPLIER_RETURN_OUT','STOCKTAKE')), CHECK(status IN ('DRAFT','POSTED')), CHECK(version >= 0)
+);
+CREATE INDEX idx_inventory_document_list ON inventory_document(type,status,created_at,id);
+CREATE TABLE inventory_document_item (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, document_id BIGINT NOT NULL, sku_id BIGINT NOT NULL,
+ product_name_snapshot VARCHAR(100) NOT NULL, specification_snapshot VARCHAR(100) NOT NULL,
+ quantity INT NULL, counted_quantity INT NULL, before_on_hand INT NULL, before_reserved INT NULL,
+ inventory_version BIGINT NULL, after_on_hand INT NULL, quantity_delta INT NULL,
+ FOREIGN KEY(document_id) REFERENCES inventory_document(id), FOREIGN KEY(sku_id) REFERENCES product_sku(id),
+ CONSTRAINT uk_inventory_document_sku UNIQUE(document_id,sku_id),
+ CHECK(quantity IS NULL OR quantity > 0), CHECK(counted_quantity IS NULL OR counted_quantity >= 0),
+ CHECK(before_on_hand IS NULL OR before_on_hand >= 0), CHECK(before_reserved IS NULL OR before_reserved >= 0),
+ CHECK(after_on_hand IS NULL OR after_on_hand >= 0)
+);
+ALTER TABLE inventory_movement
+ ADD COLUMN source_type VARCHAR(30) NULL;
+ALTER TABLE inventory_movement ADD COLUMN source_id BIGINT NULL;
+ALTER TABLE inventory_movement ADD COLUMN source_item_id BIGINT NULL;
+ALTER TABLE inventory_movement ADD COLUMN source_no VARCHAR(100) NULL;
+ALTER TABLE inventory_movement ADD COLUMN product_name_snapshot VARCHAR(100) NULL;
+ALTER TABLE inventory_movement ADD COLUMN specification_snapshot VARCHAR(100) NULL;
+CREATE INDEX idx_inventory_movement_source ON inventory_movement(source_type,source_id,source_item_id);
+CREATE INDEX idx_inventory_movement_time ON inventory_movement(created_at,id);

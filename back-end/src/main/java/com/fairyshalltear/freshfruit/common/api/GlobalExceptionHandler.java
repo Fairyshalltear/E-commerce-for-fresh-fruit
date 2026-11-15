@@ -40,7 +40,10 @@ public class GlobalExceptionHandler {
             org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
             org.springframework.web.bind.MissingServletRequestParameterException.class,
             jakarta.validation.ConstraintViolationException.class})
-    public ResponseEntity<ApiResponse<Map<String, String>>> handleInvalidRequest(Exception exception) {
+    public ResponseEntity<ApiResponse<?>> handleInvalidRequest(Exception exception) {
+        for (Throwable cause=exception; cause!=null; cause=cause.getCause()) {
+            if(cause instanceof ApiException api)return handleApiException(api);
+        }
         return ResponseEntity.badRequest().body(ApiResponse.error("BAD_REQUEST", "请求格式无效", null));
     }
 
@@ -65,6 +68,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<?>> handleIntegrity(Exception exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error("CONFLICT", "数据存在关联或违反约束", null));
+    }
+
+    @ExceptionHandler(org.springframework.dao.PessimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<?>> handleLockConflict(Exception exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error("INVENTORY_CONFLICT", "数据正被其他操作处理，请重新读取并重试", null));
     }
 
     @ExceptionHandler(Exception.class)

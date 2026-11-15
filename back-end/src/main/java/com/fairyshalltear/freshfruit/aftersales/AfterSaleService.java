@@ -26,9 +26,10 @@ public class AfterSaleService {
     private final ShopOrderMapper orders;private final OrderItemMapper orderItems;private final SkuInventoryMapper stocks;
     private final InventoryMovementMapper movements;private final AuditService audit;
     private final OrderStatusEventMapper statusEvents;
+    private final com.fairyshalltear.freshfruit.inventory.StockMovementService stockChanges;
     public AfterSaleService(AfterSaleRequestMapper requests,AfterSaleItemMapper requestItems,RefundRecordMapper refunds,
-            ShopOrderMapper orders,OrderItemMapper orderItems,SkuInventoryMapper stocks,InventoryMovementMapper movements,AuditService audit,OrderStatusEventMapper statusEvents){
-        this.requests=requests;this.requestItems=requestItems;this.refunds=refunds;this.orders=orders;this.orderItems=orderItems;this.stocks=stocks;this.movements=movements;this.audit=audit;this.statusEvents=statusEvents;
+            ShopOrderMapper orders,OrderItemMapper orderItems,SkuInventoryMapper stocks,InventoryMovementMapper movements,AuditService audit,OrderStatusEventMapper statusEvents,com.fairyshalltear.freshfruit.inventory.StockMovementService stockChanges){
+        this.stockChanges=stockChanges;this.requests=requests;this.requestItems=requestItems;this.refunds=refunds;this.orders=orders;this.orderItems=orderItems;this.stocks=stocks;this.movements=movements;this.audit=audit;this.statusEvents=statusEvents;
     }
 
     @Transactional
@@ -89,7 +90,8 @@ public class AfterSaleService {
         for(AfterSaleItem line:lines){ReceivedItem rcv=received.remove(line.orderItemId);if(rcv==null)throw bad("请提交全部退货明细的处理数量");if(rcv.refundQuantity()>line.quantity||rcv.restockQuantity()>line.quantity)throw bad("退款或入库数量超过获批数量");line.refundQuantity=rcv.refundQuantity();line.restockQuantity=rcv.restockQuantity();totalRefund+=line.refundQuantity;amount=amount.add(line.unitPrice.multiply(BigDecimal.valueOf(line.refundQuantity)));}
         if(!received.isEmpty()||totalRefund<1)throw bad("退货退款数量无效");
         completeRefund(r,order,lines,totalRefund,adminId,false,amount);
-        for(AfterSaleItem line:lines){requestItems.updateById(line);if(line.restockQuantity>0){OrderItem orderLine=orderItems.lockOwned(line.orderItemId,r.orderId);SkuInventory stock=stocks.lock(orderLine.skuId);int before=stock.getOnHand();stock.setOnHand(before+line.restockQuantity);stock.setVersion(stock.getVersion()+1);stocks.updateById(stock);recordMovement(adminId,orderLine.skuId,before,before+line.restockQuantity,line.restockQuantity,"RETURN_RESTOCK","退货入库 "+r.requestNo);orderLine.restockedQuantity+=line.restockQuantity;orderItems.updateById(orderLine);}}
+        Map<Long,Long> skuByLine=new HashMap<>();for(AfterSaleItem line:lines)skuByLine.put(line.orderItemId,orderItems.selectById(line.orderItemId).skuId);
+        for(AfterSaleItem line:lines.stream().sorted(Comparator.comparing(i->skuByLine.get(i.orderItemId))).toList()){requestItems.updateById(line);if(line.restockQuantity>0){OrderItem orderLine=orderItems.lockOwned(line.orderItemId,r.orderId);SkuInventory stock=stocks.lock(orderLine.skuId);stockChanges.change(adminId,stock,(long)stock.getOnHand()+line.restockQuantity,stock.getReserved(),"RETURN_RESTOCK","退货入库 "+r.requestNo,"AFTER_SALE",r.id,line.id,r.requestNo,orderLine.productNameSnapshot,orderLine.specificationSnapshot);orderLine.restockedQuantity+=line.restockQuantity;orderItems.updateById(orderLine);}}
         r.status=COMPLETED;r.receivedAt=LocalDateTime.now();r.updatedAt=r.receivedAt;requests.updateById(r);audit.record(adminId,"AFTER_SALE_RECEIVE","AFTER_SALE",id);return view(r,order);
     }
 
@@ -106,7 +108,6 @@ public class AfterSaleService {
         audit.record(adminId,"SIMULATED_REFUND","ORDER",order.id);
     }
     private void restorePending(List<AfterSaleItem> lines){for(AfterSaleItem ri:lines){OrderItem line=orderItems.lockById(ri.orderItemId);line.refundPendingQuantity-=ri.quantity;orderItems.updateById(line);}}
-    private void recordMovement(Long adminId,Long skuId,int before,int after,int qty,String type,String reason){Long log=audit.record(adminId,type,"SKU",skuId);InventoryMovement m=new InventoryMovement();m.setSkuId(skuId);m.setOperationLogId(log);m.setAdminId(adminId);m.setType(type);m.setBeforeOnHand(before);m.setAfterOnHand(after);m.setQuantityDelta(qty);m.setReason(reason);movements.insert(m);}
     private RequestView view(AfterSaleRequest r,ShopOrder order){List<ItemView> lines=requestItems.selectList(new QueryWrapper<AfterSaleItem>().eq("request_id",r.id).orderByAsc("id")).stream().map(i->{OrderItem oi=orderItems.selectById(i.orderItemId);return new ItemView(i.orderItemId,oi==null?"商品已失效":oi.productNameSnapshot,oi==null?"":oi.specificationSnapshot,i.quantity,i.refundQuantity,i.restockQuantity,i.unitPrice);}).toList();return new RequestView(r.id,r.requestNo,r.orderId,order==null?"":order.orderNo,r.type,r.status,r.reason,r.description,r.requestedAmount,r.reviewReason,r.returnCarrier,r.returnTrackingNumber,r.createdAt,r.reviewedAt,r.receivedAt,lines);}
     private ApiException missing(){return new ApiException("NOT_FOUND","售后申请或订单不存在",HttpStatus.NOT_FOUND);}
     private ApiException conflict(String msg){return new ApiException("AFTER_SALE_CONFLICT",msg,HttpStatus.CONFLICT);}

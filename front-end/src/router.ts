@@ -66,6 +66,8 @@ const router = createRouter({
         { path: 'buyers/:buyerId', component: () => import('./views/AdminBuyerDetailView.vue') },
         { path: 'orders', name: 'admin-orders', component: () => import('./views/AdminOrdersView.vue') },
         { path: 'after-sales', name: 'admin-after-sales', component: () => import('./views/AdminAfterSalesView.vue') },
+        { path: 'inventory/documents/:documentId', component: () => import('./views/AdminInventoryDocumentView.vue') },
+        { path: 'inventory/:section?', component: () => import('./views/AdminInventoryView.vue') },
         { path: 'reviews', name: 'admin-reviews', component: () => import('./views/AdminReviewsView.vue') },
       ],
     },

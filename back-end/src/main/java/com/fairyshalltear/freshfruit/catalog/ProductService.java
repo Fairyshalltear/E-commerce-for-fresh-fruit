@@ -48,6 +48,7 @@ public class ProductService {
         else {p.setStatus(0);p.setDeleted(0);p.setVersion(0L);}
         Set<String> names=new HashSet<>();Set<Long> ids=new HashSet<>();
         for(SkuRequest item:r.skus()) {
+            if(item.id()==null && item.onHand()==null)throw invalid("新规格必须设置初始库存");
             if(item.specification().isBlank()||!names.add(item.specification().trim()))throw invalid("规格名称不能为空或重复");
             if(item.id()!=null&&!ids.add(item.id()))throw invalid("规格 ID 重复");
         }
@@ -77,7 +78,10 @@ public class ProductService {
             s.setProductId(p.getId());s.setSpecification(item.specification().trim());s.setPrice(item.price());
             s.setStatus(item.status());s.setSortOrder(index);s.setUpdatedAt(LocalDateTime.now());
             if(item.id()==null) {skus.insert(s);inventory.initialize(admin,s.getId(),item);}
-            else {inventory.adjust(admin,locked.get(s.getId()),item,r.adjustmentReason());skus.updateById(s);}
+            else {
+                if(item.status()==0 && locked.get(s.getId()).getReserved()>0)throw conflict("规格仍有预留库存，不能停用");
+                skus.updateById(s);
+            }
         }
         images.bind(admin,p.getId(),r.imageIds());
         audit.record(admin,id==null?"PRODUCT_CREATE":"PRODUCT_UPDATE","PRODUCT",p.getId());

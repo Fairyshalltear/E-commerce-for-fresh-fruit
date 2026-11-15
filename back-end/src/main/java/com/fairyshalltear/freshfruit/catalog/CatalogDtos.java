@@ -17,9 +17,15 @@ public final class CatalogDtos {
                                   @NotNull @Min(0) Integer sortOrder, @NotNull @Min(0) @Max(1) Integer status) {}
     public record SkuRequest(@Positive Long id, @NotBlank @Size(max=100) String specification,
                             @NotNull @DecimalMin("0.01") @DecimalMax("99999999.99") @Digits(integer=8,fraction=2) BigDecimal price,
-                            @NotNull @Min(0) Integer onHand, @NotNull @Min(0) Integer lowStockThreshold,
-                            @NotNull @Min(0) @Max(1) Integer status, @Min(0) Long inventoryVersion) {
-        @JsonAnySetter public void unknown(String key, Object value) { throw new IllegalArgumentException("不允许写入字段: " + key); }
+                            @Min(0) Integer onHand,
+                            @NotNull @Min(0) @Max(1) Integer status) {
+        public SkuRequest {
+            if(id!=null && onHand!=null)throw new com.fairyshalltear.freshfruit.common.api.ApiException("VALIDATION_ERROR","已有规格库存只能通过库存管理维护，商品保存不要提交 onHand",org.springframework.http.HttpStatus.BAD_REQUEST);
+        }
+        @JsonAnySetter public void unknown(String key, Object value) {
+            if(java.util.Set.of("lowStockThreshold","reserved","inventoryVersion").contains(key))throw new com.fairyshalltear.freshfruit.common.api.ApiException("VALIDATION_ERROR","商品仅设置新规格初始库存，已有库存和阈值请通过库存管理维护",org.springframework.http.HttpStatus.BAD_REQUEST);
+            throw new IllegalArgumentException("不允许写入字段: " + key);
+        }
     }
     public record ProductRequest(@NotBlank @Size(max=100) String name, @NotNull @Positive Long categoryId,
                                  @Size(max=5000) String description, @Size(max=500) String origin,
@@ -27,7 +33,7 @@ public final class CatalogDtos {
                                  @NotNull Boolean recommended, @NotNull @Min(0) Integer recommendSort,
                                  @NotNull @Size(max=10) List<@NotNull @Positive Long> imageIds,
                                  @NotNull @Size(min=1,max=20) List<@NotNull @Valid SkuRequest> skus,
-                                 @Min(0) Long version, @Size(max=200) String adjustmentReason) {
+                                 @Min(0) Long version) {
         @JsonAnySetter public void unknown(String key, Object value) { throw new IllegalArgumentException("不允许写入字段: " + key); }
     }
     public record StatusRequest(@NotNull @Min(0) @Max(1) Integer status, @NotNull @Min(0) Long version) {}

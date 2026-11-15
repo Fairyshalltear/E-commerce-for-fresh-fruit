@@ -6,10 +6,13 @@
   <section v-if="detail" class="order-detail-panel"><div class="catalog-heading"><div><p class="eyebrow">{{ statusText(detail.status) }}</p><h2>{{ detail.orderNo }}</h2></div><button class="icon-button" aria-label="关闭详情" title="关闭详情" @click="detail = null">×</button></div><p>{{ detail.recipientName }} · {{ detail.phone }} · {{ detail.province }}{{ detail.city }}{{ detail.district }}{{ detail.detailAddress }}</p><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>商品快照</th><th>规格</th><th>单价</th><th>数量</th><th>已退款</th></tr></thead><tbody><tr v-for="item in detail.items" :key="item.id"><td>{{ item.productName }}</td><td>{{ item.specification }}</td><td>¥{{ price(item.unitPrice) }}</td><td>{{ item.quantity }}</td><td>{{ item.refundedQuantity }}</td></tr></tbody></table></div><div v-if="detail.status === 'PENDING_SHIPMENT'" class="inline-form"><h3>登记发货</h3><label class="form-field">承运商<input v-model="carrier" required maxlength="80"></label><label class="form-field">运单号<input v-model="trackingNumber" required maxlength="100"></label><button class="primary-button" :disabled="busy" @click="dispatch">确认发货</button></div><div v-if="detail.carrier" class="order-tracking"><strong>模拟物流 · {{ detail.carrier }} · {{ detail.trackingNumber }}</strong><ol><li v-for="(event, i) in detail.trackingEvents" :key="i">{{ date(event.occurredAt) }} · {{ event.description }}</li></ol><div class="inline-form"><h3>添加物流节点</h3><label class="form-field">物流描述<input v-model="trackingDescription" maxlength="500"></label><label class="form-field">发生时间<input v-model="trackingTime" type="datetime-local"></label><button class="secondary-button" :disabled="busy" @click="addTracking">添加节点</button></div></div><p v-if="notice" class="form-message-success">{{ notice }}</p><p v-if="actionError" class="form-message-error">{{ actionError }}</p></section>
 </section></template>
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { notifyInventoryChanged } from '../api/inventory'
 import PageStatus from '../components/PageStatus.vue'; import PagePagination from '../components/PagePagination.vue'
 import { errorMessage, price } from '../api/catalog'
 import { addTrackingEvent, dispatchOrder, getAdminOrder, listAdminOrders, type OrderDetail, type OrderFilter, type OrderSummary, type Page } from '../api/orders'
+const route = useRoute()
 const result = ref<Page<OrderSummary> | null>(null), detail = ref<OrderDetail | null>(null), loading = ref(false), busy = ref(false), error = ref(''), actionError = ref(''), notice = ref('')
 const status = ref<OrderFilter>('ALL'), keyword = ref(''), from = ref(''), to = ref(''), pageNo = ref(1), carrier = ref(''), trackingNumber = ref(''), trackingDescription = ref(''), trackingTime = ref('')
 const labels: Record<string,string> = { PENDING_PAYMENT:'待付款', PENDING_SHIPMENT:'待发货', PENDING_RECEIPT:'待收货', COMPLETED:'已完成', CANCELLED:'已取消' }
@@ -17,7 +20,8 @@ function statusText(s:string){return labels[s]??s} function date(s:string){retur
 async function load(){loading.value=true;error.value='';try{result.value=await listAdminOrders({status:status.value,page:pageNo.value,size:12,keyword:keyword.value||undefined,from:from.value||undefined,to:to.value||undefined})}catch(e){error.value=errorMessage(e)}finally{loading.value=false}}
 function search(){pageNo.value=1;void load()} function changePage(p:number){pageNo.value=p;void load()}
 async function open(id:number){actionError.value='';notice.value='';try{detail.value=await getAdminOrder(id);carrier.value=detail.value.carrier??'';trackingNumber.value=detail.value.trackingNumber??''}catch(e){actionError.value=errorMessage(e)}}
-async function dispatch(){if(!detail.value)return;busy.value=true;actionError.value='';try{detail.value=await dispatchOrder(detail.value.id,carrier.value,trackingNumber.value);notice.value='已发货，库存与审计记录已更新';await load()}catch(e){actionError.value=errorMessage(e)}finally{busy.value=false}}
+async function dispatch(){if(!detail.value)return;busy.value=true;actionError.value='';try{detail.value=await dispatchOrder(detail.value.id,carrier.value,trackingNumber.value);notice.value='已发货，库存与审计记录已更新';notifyInventoryChanged();await load()}catch(e){actionError.value=errorMessage(e)}finally{busy.value=false}}
 async function addTracking(){if(!detail.value||!trackingDescription.value||!trackingTime.value)return;busy.value=true;try{detail.value=await addTrackingEvent(detail.value.id,trackingDescription.value,trackingTime.value);trackingDescription.value='';notice.value='物流节点已添加'}catch(e){actionError.value=errorMessage(e)}finally{busy.value=false}}
+watch(() => route.query.orderId, id => { const n = Number(id); if (Number.isSafeInteger(n) && n > 0) void open(n) }, { immediate: true })
 void load()
 </script>

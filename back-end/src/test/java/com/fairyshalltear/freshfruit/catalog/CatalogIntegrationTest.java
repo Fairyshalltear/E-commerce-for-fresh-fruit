@@ -81,8 +81,8 @@ class CatalogIntegrationTest {
   p.put("origin","山东");p.put("taste","清甜爽脆");p.put("storageMethod","冷藏");p.put("recommended",false);p.put("recommendSort",0);
   ArrayNode images=p.putArray("imageIds");imageIds.forEach(images::add);
   ArrayNode skus=p.putArray("skus");
-  skus.addObject().put("specification","500g").put("price","19.90").put("onHand",12).put("lowStockThreshold",5).put("status",1);
-  skus.addObject().put("specification","1kg").put("price","39.90").put("onHand",20).put("lowStockThreshold",5).put("status",1);
+  skus.addObject().put("specification","500g").put("price","19.90").put("onHand",12).put("status",1);
+  skus.addObject().put("specification","1kg").put("price","39.90").put("onHand",20).put("status",1);
   return p;
  }
  JsonNode product(boolean publish)throws Exception {
@@ -93,7 +93,7 @@ class CatalogIntegrationTest {
  ObjectNode edit(JsonNode detail) {
   ObjectNode p=payload(detail.path("categoryId").asLong(),List.of());p.put("name",detail.path("name").asText());p.put("version",detail.path("version").asLong());
   ArrayNode im=p.putArray("imageIds");detail.path("images").forEach(i->im.add(i.path("id").asLong()));
-  ArrayNode sk=p.putArray("skus");detail.path("skus").forEach(s->{ObjectNode out=sk.addObject();for(String field:List.of("id","specification","price","onHand","lowStockThreshold","status","inventoryVersion"))out.set(field,s.get(field));});
+  ArrayNode sk=p.putArray("skus");detail.path("skus").forEach(s->{ObjectNode out=sk.addObject();for(String field:List.of("id","specification","price","status"))out.set(field,s.get(field));});
   return p;
  }
  String productPath(JsonNode p){return "/api/v1/admin/products/"+p.path("id").asLong();}
@@ -151,23 +151,21 @@ class CatalogIntegrationTest {
  }
  @Test void stockVersionsMovementsAndStableSkuIds()throws Exception {
   JsonNode p=product(false);long sku=p.path("skus").get(0).path("id").asLong();
-  ObjectNode body=edit(p);((ObjectNode)body.path("skus").get(0)).put("onHand",20);
+  ObjectNode body=edit(p);((ObjectNode)body.path("skus").get(0)).put("price","20.00");
   JsonNode saved=call("PUT",productPath(p),body,admin,200);
-  assertEquals(sku,saved.path("skus").get(0).path("id").asLong());assertEquals(20,saved.path("skus").get(0).path("availableStock").asInt());
-  assertEquals(8,scalar("SELECT quantity_delta FROM inventory_movement WHERE sku_id=? AND type='PRODUCT_EDIT_ADJUSTMENT'",sku));
+  assertEquals(sku,saved.path("skus").get(0).path("id").asLong());assertEquals(12,saved.path("skus").get(0).path("onHand").asInt());
   long count=scalar("SELECT COUNT(*) FROM inventory_movement WHERE sku_id=?",sku);
   call("PUT",productPath(saved),edit(saved),admin,200);assertEquals(count,scalar("SELECT COUNT(*) FROM inventory_movement WHERE sku_id=?",sku));
-  call("PUT",productPath(p),body,admin,409);
+  ((ObjectNode)body.path("skus").get(0)).put("onHand",20);call("PUT",productPath(saved),body,admin,400);
+  call("PUT",productPath(p),edit(p),admin,409);
  }
  @Test void reservedStockRollbackAndWriteProtection()throws Exception {
   JsonNode p=product(false);long sku=p.path("skus").get(0).path("id").asLong();
-  db.update("UPDATE sku_inventory SET reserved=4 WHERE sku_id=?",sku);long logsBefore=scalar("SELECT COUNT(*) FROM admin_operation_log");
+  db.update("UPDATE sku_inventory SET reserved=4,version=version+1 WHERE sku_id=?",sku);long logsBefore=scalar("SELECT COUNT(*) FROM admin_operation_log");
   ObjectNode bad=edit(p);bad.put("name","不能保存");((ObjectNode)bad.path("skus").get(0)).put("onHand",3);
-  call("PUT",productPath(p),bad,admin,409);assertEquals(p.path("name").asText(),call("GET",productPath(p),null,admin,200).path("name").asText());
-  assertEquals(logsBefore,scalar("SELECT COUNT(*) FROM admin_operation_log"));
-  ((ObjectNode)bad.path("skus").get(0)).put("reserved",0);call("PUT",productPath(p),bad,admin,400);
-  ObjectNode boundary=edit(p);((ObjectNode)boundary.path("skus").get(0)).put("onHand",4);
-  JsonNode saved=call("PUT",productPath(p),boundary,admin,200);assertEquals(0,saved.path("skus").get(0).path("availableStock").asInt());
+  call("PUT",productPath(p),bad,admin,400);assertEquals(p.path("name").asText(),call("GET",productPath(p),null,admin,200).path("name").asText());assertEquals(logsBefore,scalar("SELECT COUNT(*) FROM admin_operation_log"));
+  ((ObjectNode)bad.path("skus").get(0)).remove("onHand");((ObjectNode)bad.path("skus").get(0)).put("reserved",0);call("PUT",productPath(p),bad,admin,400);
+  ObjectNode body=edit(p);body.put("description","库存变化后可修改描述");JsonNode saved=call("PUT",productPath(p),body,admin,200);assertEquals(4,saved.path("skus").get(0).path("reserved").asInt());
   call("DELETE",productPath(saved)+"?version="+saved.path("version").asLong(),null,admin,409);
  }
  @Test void retiredSkuCanBeRestoredAndNamesSwappedWithoutNewIds()throws Exception {
@@ -188,8 +186,8 @@ class CatalogIntegrationTest {
  @Test void publicationRequiresImagesAndSkusButAllowsSoldOut()throws Exception {
   JsonNode noImage=call("POST","/api/v1/admin/products",payload(leaf,List.of()),admin,200);
   call("PATCH",productPath(noImage)+"/status",Map.of("status",1,"version",0),admin,409);
-  JsonNode p=product(false);ObjectNode soldout=edit(p);soldout.path("skus").forEach(s->((ObjectNode)s).put("onHand",0));
-  p=call("PUT",productPath(p),soldout,admin,200);p=call("PATCH",productPath(p)+"/status",Map.of("status",1,"version",p.path("version").asLong()),admin,200);
+  long image=upload(picture("png"),"image/png",200).path("id").asLong();ObjectNode soldout=payload(leaf,List.of(image));soldout.path("skus").forEach(sku->((ObjectNode)sku).put("onHand",0));
+  JsonNode p=call("POST","/api/v1/admin/products",soldout,admin,200);p=call("PATCH",productPath(p)+"/status",Map.of("status",1,"version",p.path("version").asLong()),admin,200);
   assertTrue(call("GET","/api/v1/public/products?categoryId="+leaf,null,null,200).path("items").get(0).path("soldOut").asBoolean());
   ObjectNode missing=edit(p);missing.putArray("imageIds");call("PUT",productPath(p),missing,admin,409);
   call("PUT","/api/v1/buyer/favorites/"+p.path("id").asLong(),null,buyer,200);
@@ -260,7 +258,7 @@ class CatalogIntegrationTest {
   assertTrue(call("GET",base+"&size=1&page=5",null,admin,200).path("items").isEmpty());
  }
  @Test void concurrentEditsRejectTheStaleVersion()throws Exception {
-  JsonNode p=product(false);ObjectNode a=edit(p),b=edit(p);((ObjectNode)a.path("skus").get(0)).put("onHand",30);((ObjectNode)b.path("skus").get(0)).put("onHand",40);
+  JsonNode p=product(false);ObjectNode a=edit(p),b=edit(p);((ObjectNode)a.path("skus").get(0)).put("price","30.00");((ObjectNode)b.path("skus").get(0)).put("price","40.00");
   ExecutorService pool=Executors.newFixedThreadPool(2);CountDownLatch start=new CountDownLatch(1);
   try {
    List<Future<Integer>> responses=new ArrayList<>();
@@ -295,7 +293,7 @@ class CatalogIntegrationTest {
   call("POST","/api/v1/admin/products",payload(leaf,List.of(image)),other,400);
  }
  @Test void failedAuditPersistenceRollsBackProductAndStock()throws Exception {
-  JsonNode p=product(false);ObjectNode body=edit(p);body.put("name","回滚");((ObjectNode)body.path("skus").get(0)).put("onHand",99);
+  JsonNode p=product(false);ObjectNode body=edit(p);body.put("name","回滚");((ObjectNode)body.path("skus").get(0)).put("price","99.00");
   long stock=scalar("SELECT on_hand FROM sku_inventory WHERE sku_id=?",p.path("skus").get(0).path("id").asLong());
   doThrow(new org.springframework.dao.DataIntegrityViolationException("test audit failure")).when(logs).insert(any(AdminOperationLog.class));
   try{call("PUT",productPath(p),body,admin,409);}finally{reset(logs);}
@@ -318,10 +316,10 @@ class CatalogIntegrationTest {
   ObjectNode removed=edit(p);((ArrayNode)removed.path("skus")).remove(0);call("PUT",productPath(p),removed,admin,409);
   ObjectNode disabled=edit(p);((ObjectNode)disabled.path("skus").get(0)).put("status",0);call("PUT",productPath(p),disabled,admin,409);
   ObjectNode allDisabled=edit(p);allDisabled.path("skus").forEach(s->((ObjectNode)s).put("status",0));call("PUT",productPath(p),allDisabled,admin,409);
-  ObjectNode low=edit(p);((ObjectNode)low.path("skus").get(0)).put("onHand",8);
-  p=call("PUT",productPath(p),low,admin,200);assertTrue(p.path("skus").get(0).path("lowStock").asBoolean());
-  ObjectNode atThreshold=edit(p);((ObjectNode)atThreshold.path("skus").get(0)).put("onHand",9);
-  p=call("PUT",productPath(p),atThreshold,admin,200);assertFalse(p.path("skus").get(0).path("lowStock").asBoolean());assertEquals(4,p.path("skus").get(0).path("reserved").asInt());
+  call("PATCH","/api/v1/admin/inventory/stocks/"+sku+"/threshold",Map.of("lowStockThreshold",9,"version",p.path("skus").get(0).path("inventoryVersion").asLong()),admin,200);
+  p=call("GET",productPath(p),null,admin,200);assertTrue(p.path("skus").get(0).path("lowStock").asBoolean());
+  call("PATCH","/api/v1/admin/inventory/stocks/"+sku+"/threshold",Map.of("lowStockThreshold",8,"version",p.path("skus").get(0).path("inventoryVersion").asLong()),admin,200);
+  p=call("GET",productPath(p),null,admin,200);assertFalse(p.path("skus").get(0).path("lowStock").asBoolean());assertEquals(4,p.path("skus").get(0).path("reserved").asInt());
   long records=scalar("SELECT COUNT(*) FROM admin_operation_log");
   call("PATCH",productPath(p)+"/status",Map.of("status",1,"version",p.path("version").asLong()),admin,200);assertEquals(records,scalar("SELECT COUNT(*) FROM admin_operation_log"));
  }

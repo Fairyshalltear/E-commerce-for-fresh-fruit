@@ -49,16 +49,18 @@ public class OrderService {
     private final ShopOrderMapper orders; private final OrderItemMapper orderItems; private final OrderStatusEventMapper events;
     private final PaymentRecordMapper payments; private final ShipmentMapper shipments; private final TrackingProvider tracking;
     private final ProductReviewMapper reviews; private final AuditService audit; private final InventoryMovementMapper movements;
+    private final com.fairyshalltear.freshfruit.inventory.StockMovementService stockChanges;
     private final TransactionTemplate expirationTransaction;
 
     public OrderService(CartItemMapper carts, UserAddressMapper addresses, BuyerAccountMapper buyers, ProductSkuMapper skus,
             FruitProductMapper products, SkuInventoryMapper stocks, CatalogService catalog, ShopOrderMapper orders,
             OrderItemMapper orderItems, OrderStatusEventMapper events, PaymentRecordMapper payments,
             ShipmentMapper shipments, TrackingProvider tracking, ProductReviewMapper reviews,
-            AuditService audit, InventoryMovementMapper movements, PlatformTransactionManager transactionManager) {
+            AuditService audit, InventoryMovementMapper movements, PlatformTransactionManager transactionManager, com.fairyshalltear.freshfruit.inventory.StockMovementService stockChanges) {
         this.carts=carts; this.addresses=addresses; this.buyers=buyers; this.skus=skus; this.products=products; this.stocks=stocks;
         this.catalog=catalog; this.orders=orders; this.orderItems=orderItems; this.events=events; this.payments=payments;
         this.shipments=shipments; this.tracking=tracking; this.reviews=reviews;this.audit=audit;this.movements=movements;
+        this.stockChanges=stockChanges;
         this.expirationTransaction=new TransactionTemplate(transactionManager);
         this.expirationTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -188,9 +190,8 @@ public class OrderService {
             if(quantity<=0)continue;
             SkuInventory stock=stocks.lock(item.skuId);
             if(stock==null||stock.getOnHand()<quantity||stock.getReserved()<quantity)throw conflict("订单库存预留状态异常");
-            int before=stock.getOnHand();stock.setOnHand(before-quantity);stock.setReserved(stock.getReserved()-quantity);stock.setVersion(stock.getVersion()+1);stocks.updateById(stock);
+            stockChanges.change(adminId,stock,(long)stock.getOnHand()-quantity,stock.getReserved()-quantity,"ORDER_DISPATCH","订单发货 "+order.orderNo,"ORDER",order.id,item.id,order.orderNo,item.productNameSnapshot,item.specificationSnapshot);
             item.shippedQuantity=item.shippedQuantity+quantity;orderItems.updateById(item);
-            recordMovement(adminId,item.skuId,before,before-quantity,quantity,"ORDER_DISPATCH","订单发货 "+order.orderNo);
         }
         Shipment shipment=new Shipment();shipment.orderId=orderId;shipment.carrier=carrier.trim();shipment.trackingNumber=trackingNumber.trim();shipment.createdAt=LocalDateTime.now();shipments.insert(shipment);
         order.status=PENDING_RECEIPT;order.shippedAt=LocalDateTime.now();orders.updateById(order);
@@ -253,7 +254,6 @@ public class OrderService {
     private ShopOrder requireOwnedLocked(Long buyerId,Long id) {ShopOrder o=orders.lock(id);if(o==null||!buyerId.equals(o.buyerId))throw notFound();return o;}
     private void adjustReserved(List<OrderItem> lines,int sign) {List<OrderItem> sorted=lines.stream().sorted(Comparator.comparing(i->i.skuId)).toList();for(OrderItem i:sorted){SkuInventory stock=stocks.lock(i.skuId);int qty=i.quantity-i.shippedQuantity-i.refundedQuantity-i.refundPendingQuantity;if(stock==null||qty<0||stock.getReserved()<qty)throw conflict("订单预留库存状态异常");stock.setReserved(stock.getReserved()+sign*qty);stock.setVersion(stock.getVersion()+1);stocks.updateById(stock);}}
     private void event(ShopOrder order,String from,String to,String type,String actor,Long actorId,String note) {OrderStatusEvent e=new OrderStatusEvent();e.orderId=order.id;e.fromStatus=from;e.toStatus=to;e.eventType=type;e.actorType=actor;e.actorId=actorId;e.note=note;e.createdAt=LocalDateTime.now();events.insert(e);}
-    private void recordMovement(Long adminId,Long skuId,int before,int after,int quantity,String type,String reason) {Long log=audit.record(adminId,type,"SKU",skuId);InventoryMovement m=new InventoryMovement();m.setSkuId(skuId);m.setOperationLogId(log);m.setAdminId(adminId);m.setType(type);m.setBeforeOnHand(before);m.setAfterOnHand(after);m.setQuantityDelta(-quantity);m.setReason(reason);movements.insert(m);}
     private ApiException bad(String code,String message) {return new ApiException(code,message,HttpStatus.BAD_REQUEST);}
     private ApiException conflict(String message) {return new ApiException("ORDER_CONFLICT",message,HttpStatus.CONFLICT);}
     private ApiException notFound() {return new ApiException("NOT_FOUND","订单或收货地址不存在",HttpStatus.NOT_FOUND);}

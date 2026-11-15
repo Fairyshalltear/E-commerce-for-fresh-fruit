@@ -22,7 +22,7 @@ parentId=null 为一级，非空必须指向一级。同父级名称唯一，根
 - `GET /api/v1/admin/products`：名称关键词、分类、status、recommended、page、size 组合查询，默认更新时间倒序。记录为 `{product:商品卡片,status,recommended,recommendSort,version,updatedAt}`。
 - `POST /api/v1/admin/products`：新增商品，默认下架。
 - `GET /api/v1/admin/products/{id}`：商品、当前 images、retainedImages、全部规格及实物/预留/可售/阈值/库存版本。
-- `PUT /api/v1/admin/products/{id}`：完整编辑，已有 SKU 带 id/inventoryVersion，顶层带读取时的 version。
+- `PUT /api/v1/admin/products/{id}`：完整编辑，已有 SKU 带 id，库存字段只读，顶层带读取时的 version。
 - `PATCH /api/v1/admin/products/{id}/status`：`{"status":1,"version":0}`，上架须有效启用二级分类及祖先、至少一张图及一个有效启用 SKU；零库存允许上架。
 - `DELETE /api/v1/admin/products/{id}?version=...`：逻辑删除，有预留库存时拒绝，历史关联数据保留。
 
@@ -35,15 +35,15 @@ parentId=null 为一级，非空必须指向一级。同父级名称唯一，根
   "taste":"清甜爽脆","storageMethod":"建议冷藏",
   "recommended":true,"recommendSort":0,"imageIds":[1,2],
   "skus":[
-    {"specification":"500g","price":"19.90","onHand":12,"lowStockThreshold":5,"status":1},
-    {"specification":"1kg","price":"39.90","onHand":20,"lowStockThreshold":5,"status":1}
+    {"specification":"500g","price":"19.90","onHand":12,"status":1},
+    {"specification":"1kg","price":"39.90","onHand":20,"status":1}
   ]
 }
 ```
 
-编辑增加顶层 version、各已有 SKU 的 id 和 inventoryVersion。新 SKU 不带 ID。不要把响应中的 reserved、availableStock、lowStock 等只读字段回传；请求额外字段被拒绝。价格范围 0.01..99999999.99、最多两位小数；SKU 最多 20 个，每个规格名唯一。规格停用或从请求移除后保留原 ID，可恢复；有预留量不得停用。已有规格名称可交换，标识不变。
+编辑增加顶层 version，已有 SKU 仅提交 id、specification、price、status。新 SKU 不带 ID，并提交初始 onHand，阈值默认 0；不再提交 adjustmentReason。不要把响应中的 reserved、availableStock、lowStock 等只读字段回传；请求额外字段被拒绝。价格范围 0.01..99999999.99、最多两位小数；SKU 最多 20 个，每个规格名唯一。规格停用或从请求移除后保留原 ID，可恢复；有预留量不得停用。已有规格名称可交换，标识不变。
 
-可售量=实物 onHand−预留 reserved。管理员只能设置实物量和阈值，不能修改预留量。初始正库存及实际数量变化写流水，库存不变不写重复流水。实物量低于预留量返回 409，整件商品保存回滚。旧版本返回 `409 VERSION_CONFLICT`，页面保留草稿，重新读取会确认后替换草稿。
+可售量=实物 onHand−预留 reserved。商品只设置新 SKU 初始库存；已有 onHand、lowStockThreshold、reserved、inventoryVersion 不得回传，后续数量通过库存单据/盘点调整，阈值通过库存模块配置。普通商品信息保存不受库存版本变更影响，商品旧版本仍返回 `409 VERSION_CONFLICT`。库存作业保护预留并保存流水，详见 [库存 API](inventory-api.md)。
 
 商品、SKU、库存、流水和成功审计同事务提交。管理日志记录操作者、操作类型、对象、时间和结果；失败日志只保存白名单错误元数据，不含 token、密码、完整请求体。本阶段无审计查询页面或 API。
 

@@ -17,6 +17,24 @@ public class InventoryMovement {
     private String reason;
     private Long adminId;
     private LocalDateTime createdAt;
+    private String sourceType;
+    public String getSourceType() { return sourceType; }
+    public void setSourceType(String value) { sourceType = value; }
+    private Long sourceId;
+    public Long getSourceId() { return sourceId; }
+    public void setSourceId(Long value) { sourceId = value; }
+    private Long sourceItemId;
+    public Long getSourceItemId() { return sourceItemId; }
+    public void setSourceItemId(Long value) { sourceItemId = value; }
+    private String sourceNo;
+    public String getSourceNo() { return sourceNo; }
+    public void setSourceNo(String value) { sourceNo = value; }
+    private String productNameSnapshot;
+    public String getProductNameSnapshot() { return productNameSnapshot; }
+    public void setProductNameSnapshot(String value) { productNameSnapshot = value; }
+    private String specificationSnapshot;
+    public String getSpecificationSnapshot() { return specificationSnapshot; }
+    public void setSpecificationSnapshot(String value) { specificationSnapshot = value; }
     public Long getId() { return id; }
     public void setId(Long value) { id = value; }
     public Long getSkuId() { return skuId; }
