@@ -163,7 +163,7 @@ class CatalogIntegrationTest {
   JsonNode p=product(false);long sku=p.path("skus").get(0).path("id").asLong();
   db.update("UPDATE sku_inventory SET reserved=4,version=version+1 WHERE sku_id=?",sku);long logsBefore=scalar("SELECT COUNT(*) FROM admin_operation_log");
   ObjectNode bad=edit(p);bad.put("name","不能保存");((ObjectNode)bad.path("skus").get(0)).put("onHand",3);
-  call("PUT",productPath(p),bad,admin,400);assertEquals(p.path("name").asText(),call("GET",productPath(p),null,admin,200).path("name").asText());assertEquals(logsBefore,scalar("SELECT COUNT(*) FROM admin_operation_log"));
+  call("PUT",productPath(p),bad,admin,400);assertEquals(p.path("name").asText(),call("GET",productPath(p),null,admin,200).path("name").asText());assertEquals(logsBefore+1,scalar("SELECT COUNT(*) FROM admin_operation_log"));
   ((ObjectNode)bad.path("skus").get(0)).remove("onHand");((ObjectNode)bad.path("skus").get(0)).put("reserved",0);call("PUT",productPath(p),bad,admin,400);
   ObjectNode body=edit(p);body.put("description","库存变化后可修改描述");JsonNode saved=call("PUT",productPath(p),body,admin,200);assertEquals(4,saved.path("skus").get(0).path("reserved").asInt());
   call("DELETE",productPath(saved)+"?version="+saved.path("version").asLong(),null,admin,409);
@@ -227,6 +227,39 @@ class CatalogIntegrationTest {
   call("GET","/api/v1/public/products",null,null,200);call("GET","/api/v1/admin/products",null,null,401);call("GET","/api/v1/admin/products",null,buyer,403);
   call("GET","/api/v1/buyer/favorites",null,null,401);call("GET","/api/v1/buyer/favorites",null,admin,403);
   call("POST","/api/v1/admin/products",payload(leaf,List.of()),buyer,403);
+ }
+ @Test void productStatusRequiresModuleAndSeparateSensitivePermission()throws Exception {
+  JsonNode product=product(false);long productId=product.path("id").asLong();
+  JsonNode staff=call("POST","/api/v1/admin/staff",Map.of("username","statusstaff"+label,"displayName","上下架店员",
+    "password","StaffPassword123!","modulePermissions",List.of(),"sensitivePermissions",List.of()),admin,200);
+  long staffId=staff.path("id").asLong();String username=staff.path("username").asText();
+  String staffToken=call("POST","/api/v1/admin/auth/login",Map.of("username",username,"password","StaffPassword123!"),null,200).path("accessToken").asText();
+  Map<String,Object> statusRequest=Map.of("status",1,"version",product.path("version").asLong());
+  call("PATCH",productPath(product)+"/status",statusRequest,staffToken,403);
+  call("PUT","/api/v1/admin/staff/"+staffId,Map.of("displayName","上下架店员","modulePermissions",List.of("PRODUCTS"),"sensitivePermissions",List.of()),admin,200);
+  staffToken=call("POST","/api/v1/admin/auth/login",Map.of("username",username,"password","StaffPassword123!"),null,200).path("accessToken").asText();
+  call("PATCH",productPath(product)+"/status",statusRequest,staffToken,403);
+  assertEquals(0,scalar("SELECT status FROM fruit_product WHERE id=?",productId));
+  call("PUT","/api/v1/admin/staff/"+staffId,Map.of("displayName","上下架店员","modulePermissions",List.of("PRODUCTS"),"sensitivePermissions",List.of("PRODUCT_STATUS_CHANGE")),admin,200);
+  staffToken=call("POST","/api/v1/admin/auth/login",Map.of("username",username,"password","StaffPassword123!"),null,200).path("accessToken").asText();
+  call("PATCH",productPath(product)+"/status",statusRequest,staffToken,200);
+  assertEquals(2,scalar("SELECT COUNT(*) FROM admin_operation_log WHERE admin_id=? AND result='DENIED'",staffId));
+ }
+ @Test void directInventoryAdjustmentRequiresSeparatePermissionAndIsAudited()throws Exception {
+  JsonNode product=product(false);long skuId=product.path("skus").get(0).path("id").asLong();
+  JsonNode staff=call("POST","/api/v1/admin/staff",Map.of("username","inventorystaff"+label,"displayName","库存店员",
+    "password","StaffPassword123!","modulePermissions",List.of("INVENTORY"),"sensitivePermissions",List.of()),admin,200);
+  long staffId=staff.path("id").asLong();String username=staff.path("username").asText();
+  String staffToken=call("POST","/api/v1/admin/auth/login",Map.of("username",username,"password","StaffPassword123!"),null,200).path("accessToken").asText();
+  long version=scalar("SELECT version FROM sku_inventory WHERE sku_id=?",skuId);
+  long threshold=scalar("SELECT low_stock_threshold FROM sku_inventory WHERE sku_id=?",skuId);
+  call("PATCH","/api/v1/admin/inventory/stocks/"+skuId+"/threshold",Map.of("lowStockThreshold",threshold+3,"version",version),staffToken,403);
+  assertEquals(threshold,scalar("SELECT low_stock_threshold FROM sku_inventory WHERE sku_id=?",skuId));
+  call("PUT","/api/v1/admin/staff/"+staffId,Map.of("displayName","库存店员","modulePermissions",List.of("INVENTORY"),"sensitivePermissions",List.of("INVENTORY_ADJUST")),admin,200);
+  staffToken=call("POST","/api/v1/admin/auth/login",Map.of("username",username,"password","StaffPassword123!"),null,200).path("accessToken").asText();
+  call("PATCH","/api/v1/admin/inventory/stocks/"+skuId+"/threshold",Map.of("lowStockThreshold",threshold+3,"version",version),staffToken,200);
+  assertEquals(threshold+3,scalar("SELECT low_stock_threshold FROM sku_inventory WHERE sku_id=?",skuId));
+  assertEquals(1,scalar("SELECT COUNT(*) FROM admin_operation_log WHERE admin_id=? AND result='DENIED'",staffId));
  }
  @Test void recommendationsPrioritizeManualRankAndSupplementWithoutDuplicates()throws Exception {
   db.update("UPDATE fruit_product SET is_recommended=0");
@@ -321,7 +354,7 @@ class CatalogIntegrationTest {
   call("PATCH","/api/v1/admin/inventory/stocks/"+sku+"/threshold",Map.of("lowStockThreshold",8,"version",p.path("skus").get(0).path("inventoryVersion").asLong()),admin,200);
   p=call("GET",productPath(p),null,admin,200);assertFalse(p.path("skus").get(0).path("lowStock").asBoolean());assertEquals(4,p.path("skus").get(0).path("reserved").asInt());
   long records=scalar("SELECT COUNT(*) FROM admin_operation_log");
-  call("PATCH",productPath(p)+"/status",Map.of("status",1,"version",p.path("version").asLong()),admin,200);assertEquals(records,scalar("SELECT COUNT(*) FROM admin_operation_log"));
+  call("PATCH",productPath(p)+"/status",Map.of("status",1,"version",p.path("version").asLong()),admin,200);assertEquals(records+1,scalar("SELECT COUNT(*) FROM admin_operation_log"));
  }
  @Test void productLimitsAndReviewIsolationAreEnforced()throws Exception {
   ObjectNode invalid=payload(leaf,List.of());invalid.put("name","x".repeat(101));call("POST","/api/v1/admin/products",invalid,admin,400);

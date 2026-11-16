@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,24 +19,33 @@ import com.fairyshalltear.freshfruit.account.dto.BuyerLoginRequest;
 import com.fairyshalltear.freshfruit.account.dto.RegisterRequest;
 import com.fairyshalltear.freshfruit.account.entity.AdminAccount;
 import com.fairyshalltear.freshfruit.account.entity.BuyerAccount;
+import com.fairyshalltear.freshfruit.account.entity.BuyerLoginActivity;
 import com.fairyshalltear.freshfruit.account.mapper.AdminAccountMapper;
 import com.fairyshalltear.freshfruit.account.mapper.BuyerAccountMapper;
+import com.fairyshalltear.freshfruit.account.mapper.BuyerLoginActivityMapper;
+import com.fairyshalltear.freshfruit.audit.AuditService;
 import com.fairyshalltear.freshfruit.common.api.ApiException;
 import com.fairyshalltear.freshfruit.security.JwtTokenService;
 
 @Service
 public class AuthService {
     private final BuyerAccountMapper buyers;
+    private final BuyerLoginActivityMapper loginActivities;
     private final AdminAccountMapper admins;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService tokens;
+    private final AuditService audit;
+    private final JdbcTemplate jdbc;
 
-    public AuthService(BuyerAccountMapper buyers, AdminAccountMapper admins,
-            PasswordEncoder passwordEncoder, JwtTokenService tokens) {
+    public AuthService(BuyerAccountMapper buyers, BuyerLoginActivityMapper loginActivities, AdminAccountMapper admins,
+            PasswordEncoder passwordEncoder, JwtTokenService tokens, AuditService audit, JdbcTemplate jdbc) {
         this.buyers = buyers;
+        this.loginActivities = loginActivities;
         this.admins = admins;
         this.passwordEncoder = passwordEncoder;
         this.tokens = tokens;
+        this.audit = audit;
+        this.jdbc = jdbc;
     }
 
     @Transactional
@@ -77,6 +87,9 @@ public class AuthService {
                 || !passwordEncoder.matches(request.password(), buyer == null ? "" : buyer.getPasswordHash())) {
             throw unauthorized();
         }
+        BuyerLoginActivity activity = new BuyerLoginActivity();
+        activity.setBuyerId(buyer.getId());
+        loginActivities.insert(activity);
         return tokens.issueBuyer(buyer.getId(), buyer.getUsername(), buyer.getNickname(),
                 buyer.getCredentialVersion() == null ? 0 : buyer.getCredentialVersion());
     }
@@ -87,10 +100,14 @@ public class AuthService {
                 .eq(AdminAccount::getUsername, request.username()).last("LIMIT 1"));
         if (admin == null || admin.getStatus() == null || admin.getStatus() != 1
                 || !passwordEncoder.matches(request.password(), admin == null ? "" : admin.getPasswordHash())) {
+            audit.recordAuthentication(admin == null ? null : admin.getId(), request.username(), false,
+                    "INVALID_CREDENTIALS");
             throw unauthorized();
         }
+        audit.recordAuthentication(admin.getId(), admin.getUsername(), true, null);
         String displayName = admin.getDisplayName() == null ? admin.getUsername() : admin.getDisplayName();
-        return tokens.issue(admin.getId(), admin.getUsername(), displayName, "ADMIN");
+        return tokens.issueAdmin(admin.getId(), admin.getUsername(), displayName, admin.getAccountType(),
+                admin.getCredentialVersion() == null ? 0 : admin.getCredentialVersion());
     }
 
     public AccountSummary buyerSummary(Long id) {
@@ -107,7 +124,11 @@ public class AuthService {
             throw unauthorized();
         }
         String displayName = admin.getDisplayName() == null ? admin.getUsername() : admin.getDisplayName();
-        return new AccountSummary(admin.getId(), admin.getUsername(), displayName, "ADMIN");
+        var modules = jdbc.query("SELECT permission_key FROM admin_permission WHERE admin_id=? AND permission_scope='MODULE' ORDER BY permission_key",
+                (rs, row) -> rs.getString(1), id);
+        var operations = jdbc.query("SELECT permission_key FROM admin_permission WHERE admin_id=? AND permission_scope='OPERATION' ORDER BY permission_key",
+                (rs, row) -> rs.getString(1), id);
+        return new AccountSummary(admin.getId(), admin.getUsername(), displayName, admin.getAccountType(), modules, operations);
     }
 
     private ApiException conflict(String field, String message) {

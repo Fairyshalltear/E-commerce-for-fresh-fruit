@@ -2,13 +2,15 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import http, { type ApiResponse } from '../api/http'
 
-export type AccountRole = 'BUYER' | 'ADMIN'
+export type AccountRole = 'BUYER' | 'OWNER' | 'STAFF'
 
 export interface AuthAccount {
   id: number
   username: string
   displayName: string
   role: AccountRole
+  modulePermissions?: string[]
+  sensitivePermissions?: string[]
 }
 
 export interface AuthSession {
@@ -73,6 +75,13 @@ export const useAuthStore = defineStore('auth', () => {
   async function loginAdmin(payload: AdminLoginPayload) {
     const response = await http.post<ApiResponse<AuthSession>>('/api/v1/admin/auth/login', payload)
     saveSession(response.data.data)
+    await refreshAdminIdentity()
+  }
+
+  async function refreshAdminIdentity() {
+    if (!session.value) return
+    const response = await http.get<ApiResponse<AuthAccount>>('/api/v1/admin/auth/me')
+    saveSession({ ...session.value, account: response.data.data })
   }
 
   function logout() {
@@ -88,5 +97,5 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  return { session, isAuthenticated, register, loginBuyer, loginAdmin, logout, updateDisplayName }
+  return { session, isAuthenticated, register, loginBuyer, loginAdmin, refreshAdminIdentity, logout, updateDisplayName }
 })

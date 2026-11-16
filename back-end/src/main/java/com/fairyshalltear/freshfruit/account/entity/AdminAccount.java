@@ -12,6 +12,8 @@ public class AdminAccount {
     private String passwordHash;
     private String displayName;
     private Integer status;
+    private String accountType;
+    private Long credentialVersion;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -23,4 +25,8 @@ public class AdminAccount {
     public void setDisplayName(String displayName) { this.displayName = displayName; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
+    public String getAccountType() { return accountType == null ? "OWNER" : accountType; }
+    public void setAccountType(String value) { accountType = value; }
+    public Long getCredentialVersion() { return credentialVersion; }
+    public void setCredentialVersion(Long value) { credentialVersion = value; }
 }

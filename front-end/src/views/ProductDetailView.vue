@@ -8,14 +8,14 @@
         <div class="detail-price"><small>¥</small>{{ price(selected?.price ?? null) }}<span class="availability-tag" :class="{ 'is-sold-out': !selected?.availableStock }">{{ selected?.availableStock ? '有货' : '售罄' }}</span></div>
         <div class="specification-section"><h2>选择规格</h2><div class="specification-options"><button v-for="sku in detail.skus" :key="sku.id" :class="{ active: selectedId === sku.id }" :aria-pressed="selectedId === sku.id" @click="selectedId = sku.id">{{ sku.specification }}<small v-if="!sku.availableStock"> · 售罄</small></button></div></div>
         <p class="muted">当前规格可售库存：{{ selected?.availableStock ?? 0 }} 份</p>
-        <div v-if="auth.session?.account.role !== 'ADMIN'" class="purchase-actions">
+        <div v-if="!auth.session || auth.session.account.role === 'BUYER'" class="purchase-actions">
           <label class="form-field">购买数量<input v-model.number="quantity" type="number" min="1" :max="selected?.availableStock ?? 1" step="1" :disabled="!selected?.availableStock"></label>
           <button class="primary-button" :disabled="cartBusy || !selected?.availableStock" @click="addToCart">{{ cartBusy ? '正在加入…' : '加入购物车' }}</button>
           <button class="secondary-button" :disabled="cartBusy || !selected?.availableStock" @click="buyNow">立即购买</button>
         </div>
         <p v-if="cartMessage" class="form-message-success" role="status">{{ cartMessage }}</p>
         <p v-if="cartError" class="form-message-error" role="alert">{{ cartError }}</p>
-        <button v-if="auth.session?.account.role !== 'ADMIN'" class="favorite-button" :class="{ 'is-favorited': favorited }" :disabled="favoriteBusy" @click="toggleFavorite">{{ favoriteBusy ? '正在更新…' : favorited ? '♥ 已收藏 · 取消收藏' : '♡ 收藏商品' }}</button>
+        <button v-if="!auth.session || auth.session.account.role === 'BUYER'" class="favorite-button" :class="{ 'is-favorited': favorited }" :disabled="favoriteBusy" @click="toggleFavorite">{{ favoriteBusy ? '正在更新…' : favorited ? '♥ 已收藏 · 取消收藏' : '♡ 收藏商品' }}</button>
         <p v-if="favoriteError" class="form-message-error" role="alert">{{ favoriteError }}</p>
         <div class="detail-facts"><div v-if="detail.taste"><span>口感特点</span><p>{{ detail.taste }}</p></div><div v-if="detail.storageMethod"><span>储存方法</span><p>{{ detail.storageMethod }}</p></div></div>
       </div></section>

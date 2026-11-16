@@ -64,12 +64,13 @@
 import axios from 'axios'
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore, type AccountRole } from '../stores/auth'
+import { useAuthStore } from '../stores/auth'
+type LoginRole = 'BUYER' | 'ADMIN'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const role = ref<AccountRole>(route.query.role === 'admin' ? 'ADMIN' : 'BUYER')
+const role = ref<LoginRole>(route.query.role === 'admin' ? 'ADMIN' : 'BUYER')
 const isRegister = ref(false)
 const identity = ref('')
 const username = ref('')
@@ -83,7 +84,7 @@ watch(() => route.query.role, (value) => {
   setRole(value === 'admin' ? 'ADMIN' : 'BUYER')
 })
 
-function setRole(nextRole: AccountRole) {
+function setRole(nextRole: LoginRole) {
   role.value = nextRole
   isRegister.value = false
   errorMessage.value = ''
@@ -113,7 +114,7 @@ async function submit() {
       await auth.loginBuyer({ usernameOrPhone: identity.value, password: password.value })
     }
 
-    const defaultRoute = auth.session?.account.role === 'ADMIN' ? '/admin' : '/account'
+    const defaultRoute = auth.session?.account.role !== 'BUYER' ? '/admin' : '/account'
     const redirect = typeof route.query.redirect === 'string'
       && route.query.redirect.startsWith('/')
       && !route.query.redirect.startsWith('//')

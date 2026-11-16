@@ -27,15 +27,18 @@ class MySqlMigrationTest {
    s.executeUpdate("INSERT INTO after_sale_item(request_id,order_item_id,quantity,refund_quantity,restock_quantity,unit_price) VALUES(1,1,2,2,1,10)");
    s.executeUpdate("INSERT INTO inventory_movement(sku_id,operation_log_id,admin_id,type,before_on_hand,after_on_hand,quantity_delta,reason) VALUES(1,1,1,'INITIAL',0,30,30,'初始库存'),(1,1,1,'ORDER_DISPATCH',30,25,-5,'订单发货 MIG-ORDER'),(1,1,1,'RETURN_RESTOCK',25,26,1,'退货入库 MIG-RETURN'),(1,1,1,'ORDER_DISPATCH',26,21,-5,'订单发货 MIG-MISSING'),(1,1,1,'ORDER_DISPATCH',21,16,-5,'订单发货 MIG-AMB')");
   }
-  var flyway=Flyway.configure().dataSource(url,user,password).load();assertEquals(1,flyway.migrate().migrationsExecuted);assertEquals(0,flyway.migrate().migrationsExecuted);flyway.validate();
+  var flyway=Flyway.configure().dataSource(url,user,password).load();assertEquals(3,flyway.migrate().migrationsExecuted);assertEquals(0,flyway.migrate().migrationsExecuted);flyway.validate();
   try(Connection c=DriverManager.getConnection(url,user,password);Statement s=c.createStatement()) {
+   try(ResultSet r=s.executeQuery("SELECT account_type,credential_version FROM admin_account WHERE id=1")){assertTrue(r.next());assertEquals("OWNER",r.getString(1));assertEquals(0,r.getLong(2));}
    assertEquals(1,scalar(s,"SELECT COUNT(*) FROM user_address WHERE buyer_id=1"));assertEquals(0,scalar(s,"SELECT credential_version FROM buyer_account WHERE id=1"));
    assertEquals(30,scalar(s,"SELECT on_hand FROM sku_inventory WHERE sku_id=1"));assertEquals(8,scalar(s,"SELECT reserved FROM sku_inventory WHERE sku_id=1"));assertEquals(7,scalar(s,"SELECT version FROM sku_inventory WHERE sku_id=1"));
    assertEquals(5,scalar(s,"SELECT COUNT(*) FROM inventory_movement"));assertEquals(1,scalar(s,"SELECT COUNT(*) FROM admin_operation_log"));assertEquals(2,scalar(s,"SELECT COUNT(*) FROM shop_order"));assertEquals(1,scalar(s,"SELECT COUNT(*) FROM after_sale_request"));
    assertEquals(2,scalar(s,"SELECT COUNT(*) FROM inventory_movement WHERE source_id=1 AND source_item_id=1"));
    assertEquals(3,scalar(s,"SELECT COUNT(*) FROM inventory_movement WHERE source_id IS NULL"));assertEquals(0,scalar(s,"SELECT COUNT(*) FROM inventory_movement WHERE product_name_snapshot IS NOT NULL"));
    assertEquals(2,scalar(s,"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('inventory_document','inventory_document_item')"));
-   assertTrue(scalar(s,"SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND index_name IN ('idx_inventory_movement_time','idx_inventory_movement_source','uk_inventory_document_sku')")>=3);
+   assertEquals(1,scalar(s,"SELECT COUNT(*) FROM admin_operation_log WHERE id=1 AND operation_type='INITIAL' AND target_id=1"));
+   assertEquals(4,scalar(s,"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('admin_permission','buyer_login_activity','storefront_carousel','storefront_announcement')"));
+   assertTrue(scalar(s,"SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND index_name IN ('idx_inventory_movement_time','idx_inventory_movement_source','uk_inventory_document_sku','idx_admin_log_actor_time','idx_admin_log_retention','idx_buyer_login_activity_time_buyer','idx_storefront_carousel_public','idx_storefront_announcement_public','idx_payment_result_time')")>=9);
    s.executeUpdate("INSERT INTO product_category(name,parent_id) VALUES('同名根',NULL)");assertThrows(SQLException.class,()->s.executeUpdate("INSERT INTO product_category(name,parent_id) VALUES('同名根',NULL)"));assertThrows(SQLException.class,()->s.executeUpdate("INSERT INTO product_category(name,parent_id) VALUES('孤儿',99999)"));
   }
  }

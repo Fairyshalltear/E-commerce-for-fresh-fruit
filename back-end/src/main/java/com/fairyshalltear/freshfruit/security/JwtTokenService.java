@@ -33,6 +33,24 @@ public class JwtTokenService {
         return issue(accountId, username, displayName, "BUYER", credentialVersion);
     }
 
+    public AuthSession issueAdmin(Long accountId, String username, String displayName, String accountRole, long credentialVersion) {
+        Instant now = Instant.now();
+        Instant expiresAt = now.plusSeconds(expirationMinutes * 60);
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer("fresh-fruit")
+                .issuedAt(now)
+                .expiresAt(expiresAt)
+                .subject(accountId.toString())
+                .claim("roles", List.of("ADMIN"))
+                .claim("role", "ADMIN")
+                .claim("credentialVersion", credentialVersion)
+                .build();
+        String token = encoder.encode(JwtEncoderParameters.from(
+                JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
+        return new AuthSession(token, "Bearer", expirationMinutes * 60,
+                new AccountSummary(accountId, username, displayName, accountRole));
+    }
+
     private AuthSession issue(Long accountId, String username, String displayName, String role,
             Long credentialVersion) {
         Instant now = Instant.now();

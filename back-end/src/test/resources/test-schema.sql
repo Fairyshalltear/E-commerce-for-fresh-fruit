@@ -16,8 +16,18 @@ CREATE TABLE admin_account (
     username VARCHAR(50) NOT NULL UNIQUE,
     password_hash VARCHAR(100) NOT NULL,
     display_name VARCHAR(50),
-    status INTEGER NOT NULL DEFAULT 1
+    status INTEGER NOT NULL DEFAULT 1,
+    account_type VARCHAR(20) NOT NULL DEFAULT 'OWNER' CHECK (account_type IN ('OWNER','STAFF')),
+    credential_version BIGINT NOT NULL DEFAULT 0
 );
+CREATE TABLE admin_permission (
+ admin_id BIGINT NOT NULL, permission_scope VARCHAR(20) NOT NULL, permission_key VARCHAR(40) NOT NULL,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(admin_id,permission_scope,permission_key), FOREIGN KEY(admin_id) REFERENCES admin_account(id),
+ CHECK(permission_scope IN ('MODULE','OPERATION')),
+ CHECK(permission_key IN ('PRODUCTS','BUYERS','ORDERS','INVENTORY','AFTER_SALES','CONTENT','STATISTICS','REFUND_EXECUTE','PRODUCT_STATUS_CHANGE','INVENTORY_ADJUST'))
+);
+CREATE INDEX idx_admin_permission_lookup ON admin_permission(permission_scope,permission_key,admin_id);
 
 CREATE TABLE user_address (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -78,11 +88,22 @@ CREATE TABLE sku_inventory (
  FOREIGN KEY(sku_id) REFERENCES product_sku(id), CHECK(on_hand >= reserved), CHECK(reserved >= 0), CHECK(low_stock_threshold >= 0)
 );
 CREATE TABLE admin_operation_log (
- id BIGINT AUTO_INCREMENT PRIMARY KEY, admin_id BIGINT NOT NULL,
- operation_type VARCHAR(50) NOT NULL, target_type VARCHAR(30) NOT NULL, target_id BIGINT NOT NULL,
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, admin_id BIGINT,
+ operation_type VARCHAR(50) NOT NULL, target_type VARCHAR(30), target_id BIGINT,
  result VARCHAR(20) NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ event_category VARCHAR(30), actor_username_snapshot VARCHAR(50), source_ip VARCHAR(45), request_path VARCHAR(255),
+ target_summary VARCHAR(500), failure_category VARCHAR(80),
  FOREIGN KEY(admin_id) REFERENCES admin_account(id)
 );
+CREATE INDEX idx_admin_log_actor_time ON admin_operation_log(admin_id,created_at,id);
+CREATE INDEX idx_admin_log_operation_time ON admin_operation_log(operation_type,created_at,id);
+CREATE INDEX idx_admin_log_result_time ON admin_operation_log(result,created_at,id);
+CREATE INDEX idx_admin_log_retention ON admin_operation_log(created_at,id);
+CREATE TABLE buyer_login_activity (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, buyer_id BIGINT NOT NULL,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(buyer_id) REFERENCES buyer_account(id)
+);
+CREATE INDEX idx_buyer_login_activity_time_buyer ON buyer_login_activity(created_at,buyer_id);
 CREATE TABLE inventory_movement (
  id BIGINT AUTO_INCREMENT PRIMARY KEY, sku_id BIGINT NOT NULL, operation_log_id BIGINT NOT NULL,
  type VARCHAR(40) NOT NULL, before_on_hand INT NOT NULL, after_on_hand INT NOT NULL, quantity_delta INT NOT NULL,
@@ -91,6 +112,7 @@ CREATE TABLE inventory_movement (
  FOREIGN KEY(admin_id) REFERENCES admin_account(id), CHECK(after_on_hand >= 0), CHECK(before_on_hand >= 0)
 );
 CREATE INDEX idx_movement_sku_time ON inventory_movement(sku_id,created_at,id);
+CREATE INDEX idx_buyer_created_at ON buyer_account(created_at,id);
 CREATE TABLE user_favorite (
  id BIGINT AUTO_INCREMENT PRIMARY KEY, buyer_id BIGINT NOT NULL, product_id BIGINT NOT NULL,
  product_name_snapshot VARCHAR(100) NOT NULL, main_image_snapshot VARCHAR(300) NULL,
@@ -138,6 +160,7 @@ CREATE TABLE shop_order (
 );
 CREATE INDEX idx_order_buyer_status_time ON shop_order(buyer_id,status,created_at,id);
 CREATE INDEX idx_order_status_time ON shop_order(status,created_at,id);
+CREATE INDEX idx_order_created_buyer_status ON shop_order(created_at,buyer_id,status,id);
 CREATE TABLE order_item (
  id BIGINT AUTO_INCREMENT PRIMARY KEY, order_id BIGINT NOT NULL, product_id BIGINT NOT NULL, sku_id BIGINT NOT NULL,
  product_name_snapshot VARCHAR(100) NOT NULL, specification_snapshot VARCHAR(100) NOT NULL, image_snapshot VARCHAR(300),
@@ -160,6 +183,7 @@ CREATE TABLE payment_record (
  CHECK (result IN ('SUCCESS','FAILED','CANCELLED')), CHECK (amount >= 0)
 );
 CREATE INDEX idx_payment_order_time ON payment_record(order_id,created_at,id);
+CREATE INDEX idx_payment_result_time ON payment_record(result,created_at,order_id,id);
 CREATE TABLE shipment (
  id BIGINT AUTO_INCREMENT PRIMARY KEY, order_id BIGINT NOT NULL UNIQUE, carrier VARCHAR(80) NOT NULL,
  tracking_number VARCHAR(100) NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -208,6 +232,7 @@ CREATE TABLE refund_record (
  CHECK (amount >= 0), CHECK (result = 'SIMULATED_SUCCESS')
 );
 CREATE INDEX idx_refund_order_time ON refund_record(order_id,created_at,id);
+CREATE INDEX idx_refund_result_time ON refund_record(result,created_at,order_id,id);
 ALTER TABLE product_review ADD COLUMN deleted_at DATETIME NULL;
 ALTER TABLE product_review ADD COLUMN deleted_by BIGINT NULL;
 ALTER TABLE product_review ADD COLUMN deletion_reason VARCHAR(500) NULL;
@@ -218,6 +243,25 @@ CREATE TABLE product_review_deletion_audit (
  FOREIGN KEY (review_id) REFERENCES product_review(id), FOREIGN KEY (admin_id) REFERENCES admin_account(id)
 );
 CREATE INDEX idx_review_delete_audit ON product_review_deletion_audit(review_id,created_at,id);
+
+CREATE TABLE storefront_carousel (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, image_id BIGINT NOT NULL, title VARCHAR(100), target_url VARCHAR(500),
+ sort_order INT NOT NULL DEFAULT 0 CHECK(sort_order >= 0), enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)),
+ start_at DATETIME NOT NULL, end_at DATETIME, created_by BIGINT NOT NULL,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(image_id) REFERENCES product_image(id), FOREIGN KEY(created_by) REFERENCES admin_account(id),
+ CHECK(end_at IS NULL OR end_at > start_at)
+);
+CREATE INDEX idx_storefront_carousel_public ON storefront_carousel(enabled,start_at,end_at,sort_order,id);
+CREATE TABLE storefront_announcement (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(150) NOT NULL, summary VARCHAR(500) NOT NULL DEFAULT '', body CLOB NOT NULL,
+ sort_order INT NOT NULL DEFAULT 0 CHECK(sort_order >= 0), pinned INTEGER NOT NULL DEFAULT 0 CHECK(pinned IN (0,1)),
+ enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)), start_at DATETIME NOT NULL, end_at DATETIME,
+ created_by BIGINT NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(created_by) REFERENCES admin_account(id),
+ CHECK(end_at IS NULL OR end_at > start_at)
+);
+CREATE INDEX idx_storefront_announcement_public ON storefront_announcement(enabled,pinned,start_at,end_at,sort_order,id);
 
 CREATE TABLE inventory_document (
  id BIGINT AUTO_INCREMENT PRIMARY KEY, document_no VARCHAR(60) NOT NULL UNIQUE,

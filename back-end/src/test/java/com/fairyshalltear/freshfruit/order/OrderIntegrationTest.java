@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -51,6 +52,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 @AutoConfigureMockMvc
 class OrderIntegrationTest {
     @Autowired private MockMvc mvc; @Autowired private ObjectMapper json;
+    @Autowired private JdbcTemplate jdbc;
     @Autowired private ProductCategoryMapper categories; @Autowired private FruitProductMapper products;
     @Autowired private ProductSkuMapper skus; @Autowired private SkuInventoryMapper stocks;
     @Autowired private UserAddressMapper addresses; @Autowired private CartItemMapper carts;
@@ -356,7 +358,24 @@ class OrderIntegrationTest {
         mvc.perform(get("/api/v1/admin/after-sales").header("Authorization",bearer(buyer))).andExpect(status().isForbidden());
         String refundOther=buyerToken("refundotherbuyer");
         mvc.perform(get("/api/v1/buyer/after-sales/"+refundId).header("Authorization",bearer(refundOther))).andExpect(status().isNotFound());
-        mvc.perform(post("/api/v1/admin/after-sales/"+refundId+"/review").header("Authorization",bearer(admin)).contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true,\"reason\":\"核实通过\"}"))
+        JsonNode refundStaff=body(mvc.perform(post("/api/v1/admin/staff").header("Authorization",bearer(admin)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"username\":\"refundstaff\",\"displayName\":\"退款店员\",\"password\":\"StaffPassword123!\",\"modulePermissions\":[\"AFTER_SALES\"],\"sensitivePermissions\":[]}"))
+                .andExpect(status().isOk()).andReturn()).path("data");
+        long refundStaffId=refundStaff.path("id").asLong();
+        String refundStaffToken=body(mvc.perform(post("/api/v1/admin/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"username\":\"refundstaff\",\"password\":\"StaffPassword123!\"}"))
+                .andExpect(status().isOk()).andReturn()).path("data").path("accessToken").asText();
+        mvc.perform(post("/api/v1/admin/after-sales/"+refundId+"/review").header("Authorization",bearer(refundStaffToken)).contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true,\"reason\":\"核实通过\"}"))
+                .andExpect(status().isForbidden());
+        assertEquals("PENDING_REVIEW",body(mvc.perform(get("/api/v1/buyer/after-sales/"+refundId).header("Authorization",bearer(buyer))).andExpect(status().isOk()).andReturn()).path("data").path("status").asText());
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM admin_operation_log WHERE admin_id=? AND result='DENIED'",Integer.class,refundStaffId));
+        mvc.perform(put("/api/v1/admin/staff/"+refundStaffId).header("Authorization",bearer(admin)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"displayName\":\"退款店员\",\"modulePermissions\":[\"AFTER_SALES\"],\"sensitivePermissions\":[\"REFUND_EXECUTE\"]}"))
+                .andExpect(status().isOk());
+        refundStaffToken=body(mvc.perform(post("/api/v1/admin/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"username\":\"refundstaff\",\"password\":\"StaffPassword123!\"}"))
+                .andExpect(status().isOk()).andReturn()).path("data").path("accessToken").asText();
+        mvc.perform(post("/api/v1/admin/after-sales/"+refundId+"/review").header("Authorization",bearer(refundStaffToken)).contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true,\"reason\":\"核实通过\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("COMPLETED"));
         assertEquals(1,stocks.selectById(refundFixture.skuId).getReserved());
         mvc.perform(post("/api/v1/admin/after-sales/"+refundId+"/review").header("Authorization",bearer(admin)).contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true,\"reason\":\"重复\"}" )).andExpect(status().isConflict());

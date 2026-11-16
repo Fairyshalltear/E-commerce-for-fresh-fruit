@@ -5,6 +5,8 @@ declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean
     role?: AccountRole
+    module?: string
+    ownerOnly?: boolean
   }
 }
 
@@ -55,24 +57,28 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: () => import('./views/AdminView.vue'),
-      meta: { requiresAuth: true, role: 'ADMIN' },
+      meta: { requiresAuth: true },
       children: [
-        { path: '', name: 'admin-home', redirect: '/admin/products' },
-        { path: 'products', component: () => import('./views/AdminProductsView.vue') },
-        { path: 'products/new', component: () => import('./views/AdminProductEditView.vue') },
-        { path: 'products/:productId/edit', component: () => import('./views/AdminProductEditView.vue') },
-        { path: 'categories', component: () => import('./views/AdminCategoriesView.vue') },
-        { path: 'buyers', component: () => import('./views/AdminBuyersView.vue') },
-        { path: 'buyers/:buyerId', component: () => import('./views/AdminBuyerDetailView.vue') },
-        { path: 'orders', name: 'admin-orders', component: () => import('./views/AdminOrdersView.vue') },
-        { path: 'after-sales', name: 'admin-after-sales', component: () => import('./views/AdminAfterSalesView.vue') },
-        { path: 'inventory/documents/:documentId', component: () => import('./views/AdminInventoryDocumentView.vue') },
-        { path: 'inventory/:section?', component: () => import('./views/AdminInventoryView.vue') },
-        { path: 'reviews', name: 'admin-reviews', component: () => import('./views/AdminReviewsView.vue') },
+        { path: 'products', component: () => import('./views/AdminProductsView.vue'), meta: { module: 'PRODUCTS' } },
+        { path: 'products/new', component: () => import('./views/AdminProductEditView.vue'), meta: { module: 'PRODUCTS' } },
+        { path: 'products/:productId/edit', component: () => import('./views/AdminProductEditView.vue'), meta: { module: 'PRODUCTS' } },
+        { path: 'categories', component: () => import('./views/AdminCategoriesView.vue'), meta: { module: 'PRODUCTS' } },
+        { path: 'buyers', component: () => import('./views/AdminBuyersView.vue'), meta: { module: 'BUYERS' } },
+        { path: 'buyers/:buyerId', component: () => import('./views/AdminBuyerDetailView.vue'), meta: { module: 'BUYERS' } },
+        { path: 'orders', name: 'admin-orders', component: () => import('./views/AdminOrdersView.vue'), meta: { module: 'ORDERS' } },
+        { path: 'after-sales', name: 'admin-after-sales', component: () => import('./views/AdminAfterSalesView.vue'), meta: { module: 'AFTER_SALES' } },
+        { path: 'inventory/documents/:documentId', component: () => import('./views/AdminInventoryDocumentView.vue'), meta: { module: 'INVENTORY' } },
+        { path: 'inventory/:section?', component: () => import('./views/AdminInventoryView.vue'), meta: { module: 'INVENTORY' } },
+        { path: 'reviews', name: 'admin-reviews', component: () => import('./views/AdminReviewsView.vue'), meta: { module: 'PRODUCTS' } },
+        { path: 'analytics', name: 'admin-analytics', component: () => import('./views/AdminAnalyticsView.vue'), meta: { module: 'STATISTICS' } },
+        { path: 'content', name: 'admin-content', component: () => import('./views/AdminContentView.vue'), meta: { module: 'CONTENT' } },
+        { path: 'staff', name: 'admin-staff', component: () => import('./views/AdminStaffView.vue'), meta: { ownerOnly: true } },
+        { path: 'audit-logs', name: 'admin-audit-logs', component: () => import('./views/AdminAuditLogsView.vue'), meta: { ownerOnly: true } },
       ],
     },
   ],
 })
+const moduleHome: Record<string, string> = { PRODUCTS: 'products', ORDERS: 'orders', INVENTORY: 'inventory', AFTER_SALES: 'after-sales', CONTENT: 'content', STATISTICS: 'analytics', BUYERS: 'buyers' }
 
 router.beforeEach((to) => {
   if (!to.meta.requiresAuth) return true
@@ -82,7 +88,16 @@ router.beforeEach((to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
   if (to.meta.role && auth.session.account.role !== to.meta.role) {
-    return { name: auth.session.account.role === 'ADMIN' ? 'admin' : 'account' }
+    return { name: auth.session.account.role !== 'BUYER' ? 'admin' : 'account' }
+  }
+  if (auth.session.account.role === 'BUYER') return { name: 'account' }
+  if (to.meta.ownerOnly && auth.session.account.role !== 'OWNER') return { name: 'admin' }
+  if (to.meta.module && auth.session.account.role !== 'OWNER'
+      && !auth.session.account.modulePermissions?.includes(to.meta.module)) return { name: 'admin' }
+  if (to.path === '/admin') {
+    const first = ['PRODUCTS', 'ORDERS', 'INVENTORY', 'AFTER_SALES', 'CONTENT', 'STATISTICS', 'BUYERS']
+      .find((module) => auth.session?.account.role === 'OWNER' || auth.session?.account.modulePermissions?.includes(module))
+    return first ? { path: `/admin/${moduleHome[first]}` } : { name: 'login' }
   }
   return true
 })

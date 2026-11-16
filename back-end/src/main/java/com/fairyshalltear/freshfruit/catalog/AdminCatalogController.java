@@ -9,22 +9,26 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.multipart.MultipartFile;
 import com.fairyshalltear.freshfruit.common.api.*;
+import com.fairyshalltear.freshfruit.security.AdminPermissionService;
 import static com.fairyshalltear.freshfruit.catalog.CatalogDtos.*;
 @RestController
 @RequestMapping("/api/v1/admin")
 @Validated
 public class AdminCatalogController {
     private static final Logger log=LoggerFactory.getLogger(AdminCatalogController.class);
+    private final AdminPermissionService permissions;
     private final ProductService products;private final CatalogService catalog;private final CategoryService categories;private final ProductImageService images;
-    public AdminCatalogController(ProductService products,CatalogService catalog,CategoryService categories,ProductImageService images) {
-        this.products=products;this.catalog=catalog;this.categories=categories;this.images=images;
+    public AdminCatalogController(ProductService products,CatalogService catalog,CategoryService categories,ProductImageService images,AdminPermissionService permissions) {
+        this.products=products;this.catalog=catalog;this.categories=categories;this.images=images;this.permissions=permissions;
     }
     @GetMapping("/products") public ApiResponse<Page<AdminCard>> list(@Valid @ModelAttribute Query query) {return ApiResponse.success(catalog.adminList(query));}
     @GetMapping("/products/{id}") public ApiResponse<AdminDetail> get(@PathVariable @Positive Long id){return ApiResponse.success(products.detail(id));}
     @PostMapping("/products") public ApiResponse<AdminDetail> create(JwtAuthenticationToken jwt,@Valid @RequestBody ProductRequest r) {
+        requireInitialStockPermission(jwt,r);
         return mutate(jwt,"PRODUCT_CREATE",null,()->products.save(subject(jwt),null,r));
     }
     @PutMapping("/products/{id}") public ApiResponse<AdminDetail> update(JwtAuthenticationToken jwt,@PathVariable @Positive Long id,@Valid @RequestBody ProductRequest r) {
+        requireInitialStockPermission(jwt,r);
         return mutate(jwt,"PRODUCT_UPDATE",id,()->products.save(subject(jwt),id,r));
     }
     @PatchMapping("/products/{id}/status") public ApiResponse<AdminDetail> status(JwtAuthenticationToken jwt,@PathVariable @Positive Long id,@Valid @RequestBody StatusRequest r) {
@@ -48,6 +52,10 @@ public class AdminCatalogController {
         return mutate(jwt,"CATEGORY_DELETE",id,()->{categories.delete(subject(jwt),id);return null;});
     }
     private Long subject(JwtAuthenticationToken jwt){return Long.valueOf(jwt.getToken().getSubject());}
+    private void requireInitialStockPermission(JwtAuthenticationToken jwt,ProductRequest request){
+        if(request.skus().stream().anyMatch(sku->sku.id()==null&&sku.onHand()!=null&&sku.onHand()>0))
+            permissions.requireOperation(subject(jwt),"INVENTORY","INVENTORY_ADJUST");
+    }
     private <T> ApiResponse<T> mutate(JwtAuthenticationToken jwt,String operation,Long target,Supplier<T> action) {
         try{return ApiResponse.success(action.get());}
         catch(RuntimeException ex){log.warn("catalog operation={} admin={} target={} result=FAILED code={}",operation,subject(jwt),target,

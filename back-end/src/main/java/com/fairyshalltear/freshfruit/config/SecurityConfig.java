@@ -73,7 +73,8 @@ public class SecurityConfig {
 
     @Bean
     Converter<Jwt, ? extends org.springframework.security.authentication.AbstractAuthenticationToken> jwtAuthenticationConverter(
-            com.fairyshalltear.freshfruit.account.mapper.BuyerAccountMapper buyers) {
+            com.fairyshalltear.freshfruit.account.mapper.BuyerAccountMapper buyers,
+            com.fairyshalltear.freshfruit.account.mapper.AdminAccountMapper admins) {
         JwtGrantedAuthoritiesConverter authorities = new JwtGrantedAuthoritiesConverter();
         authorities.setAuthoritiesClaimName("roles");
         authorities.setAuthorityPrefix("ROLE_");
@@ -98,6 +99,23 @@ public class SecurityConfig {
                     throw new BadCredentialsException("Unable to validate buyer token", exception);
                 }
             }
+            if (jwt.getClaimAsStringList("roles") != null
+                    && jwt.getClaimAsStringList("roles").contains("ADMIN")) {
+                try {
+                    long adminId = Long.parseLong(jwt.getSubject());
+                    Number claimVersion = jwt.getClaim("credentialVersion");
+                    long tokenVersion = claimVersion == null ? 0 : claimVersion.longValue();
+                    var admin = admins.selectById(adminId);
+                    if (admin == null || admin.getStatus() == null || admin.getStatus() != 1
+                            || (admin.getCredentialVersion() == null ? 0 : admin.getCredentialVersion()) != tokenVersion) {
+                        throw new BadCredentialsException("Admin token is no longer valid");
+                    }
+                } catch (BadCredentialsException exception) {
+                    throw exception;
+                } catch (RuntimeException exception) {
+                    throw new BadCredentialsException("Unable to validate admin token", exception);
+                }
+            }
             return authentication;
         };
     }
@@ -112,7 +130,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/v1/health", "/api/v1/auth/register", "/api/v1/auth/login",
-                                "/api/v1/admin/auth/login", "/api/v1/public/avatars/**").permitAll()
+                                "/api/v1/admin/auth/login", "/api/v1/public/avatars/**",
+                                "/api/v1/public/content/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/public/products", "/api/v1/public/products/recommendations",
                                 "/api/v1/public/products/{id}", "/api/v1/public/products/{id}/reviews",
                                 "/api/v1/public/categories", "/api/v1/public/product-images/{filename}").permitAll()

@@ -1246,3 +1246,33 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   .inventory-tabs a { padding: 8px 10px; font-size: 13px; }
   .inventory-actions .primary-button, .inventory-actions .secondary-button { flex: 1 1 130px; }
 }
+
+.hero-art.has-carousel { height: 310px; min-width: 0; overflow: hidden; border-radius: 4px; background: #edf2ee; }
+.hero-art.has-carousel > a { display: block; width: 100%; height: 100%; position: relative; }
+.hero-art.has-carousel img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.carousel-caption { position: absolute; left: 16px; right: 16px; bottom: 18px; padding: 10px 12px; color: #fff; background: rgb(24 38 30 / 72%); overflow-wrap: anywhere; }
+.carousel-arrow { position: absolute; z-index: 1; top: 45%; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgb(255 255 255 / 90%); color: #263d27; font-size: 24px; line-height: 1; }
+.carousel-arrow.previous { left: 10px; }
+.carousel-arrow.next { right: 10px; }
+.carousel-dots { position: absolute; z-index: 1; left: 0; right: 0; bottom: 8px; display: flex; justify-content: center; gap: 8px; }
+.carousel-dots button { width: 9px; height: 9px; aspect-ratio: 1; padding: 0; border: 1px solid white; border-radius: 50%; background: rgb(255 255 255 / 45%); }
+.carousel-dots button[aria-pressed="true"] { background: white; }
+.home-announcements { padding: 22px 0; border-top: 1px solid #e6ebe7; }
+.home-announcements ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid #e6ebe7; }
+.home-announcements li { border-bottom: 1px solid #e6ebe7; }
+.home-announcements li button { display: grid; grid-template-columns: 52px minmax(130px, 1fr) minmax(100px, 2fr) auto; gap: 12px; align-items: center; width: 100%; padding: 14px 4px; border: 0; background: none; text-align: left; color: #283a30; }
+.home-announcements li button span { color: #278258; font-size: 12px; }
+.home-announcements li button small { color: #69766e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-announcements li button time { color: #879189; font-size: 12px; }
+.announcement-dialog { position: fixed; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: min(620px, calc(100vw - 28px)); max-height: min(80vh, 700px); overflow: auto; padding: 26px; border: 1px solid #dce4de; border-radius: 5px; color: #26352d; }
+.announcement-dialog::backdrop { background: rgb(19 31 24 / 44%); }
+.announcement-dialog h2 { margin: 8px 0; overflow-wrap: anywhere; }
+.announcement-dialog time { color: #77847c; font-size: 12px; }
+.announcement-body { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
+.dialog-close { float: right; border: 0; background: none; color: #58655d; font-size: 25px; }
+@media (max-width: 700px) {
+  .hero-art.has-carousel { height: 210px; display: block; }
+  .home-announcements li button { grid-template-columns: 44px minmax(0, 1fr) auto; }
+  .home-announcements li button small { grid-column: 2 / -1; grid-row: 2; }
+  .home-announcements li button time { grid-column: 3; grid-row: 1; }
+}
