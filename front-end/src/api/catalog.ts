@@ -6,7 +6,9 @@ export interface ImageRef { id: number; url: string }
 export interface ProductCard { id: number; name: string; categoryId: number; categoryName: string; mainImage: string | null; minPrice: string | null; maxPrice: string | null; availableStock: number; soldOut: boolean }
 export interface Sku { id: number; specification: string; price: string; availableStock: number }
 export interface ReviewSummary { count: number; averageRating: number | null }
-export interface ProductDetail { id: number; name: string; categoryId: number; categoryPath: Category[]; description: string; origin: string; taste: string; storageMethod: string; images: ImageRef[]; skus: Sku[]; reviewSummary: ReviewSummary }
+export interface ProductConsultation { sweetnessDescription: string | null; seasonalMonths: number[]; giftBox: boolean; useCases: string[] }
+export const productUseCases: Record<string, string> = { DAILY: '日常食用', ELDER_GIFT: '长辈送礼', FRIEND_GIFT: '亲友送礼', BUSINESS_GIFT: '商务送礼', FAMILY: '家庭分享' }
+export interface ProductDetail extends ProductConsultation { id: number; name: string; categoryId: number; categoryPath: Category[]; description: string; origin: string; taste: string; storageMethod: string; images: ImageRef[]; skus: Sku[]; reviewSummary: ReviewSummary }
 export interface Review { id: number; rating: number; content: string; specification: string; createdAt: string; nickname: string }
 export type Sort = 'NEWEST' | 'PRICE_ASC' | 'PRICE_DESC'
 export interface SearchQuery { keyword?: string; categoryId?: number; minPrice?: string; maxPrice?: string; sort?: Sort; page?: number; size?: number }

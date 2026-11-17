@@ -11,11 +11,12 @@ import static com.fairyshalltear.freshfruit.catalog.CatalogErrors.*;
 import static com.fairyshalltear.freshfruit.catalog.CatalogDtos.*;
 @Service
 public class CategoryService {
+    private final com.fairyshalltear.freshfruit.ai.knowledge.AiCatalogSynchronizer aiSync;
     private final ProductCategoryMapper categories;
     private final FruitProductMapper products;
     private final AuditService audit;
-    public CategoryService(ProductCategoryMapper categories,FruitProductMapper products,AuditService audit) {
-        this.categories=categories;this.products=products;this.audit=audit;
+    public CategoryService(ProductCategoryMapper categories,FruitProductMapper products,AuditService audit,com.fairyshalltear.freshfruit.ai.knowledge.AiCatalogSynchronizer aiSync) {
+        this.categories=categories;this.products=products;this.audit=audit;this.aiSync=aiSync;
     }
     public List<ProductCategory> lockTree() { return categories.lockTree(); }
     public List<Category> tree(boolean publicly) {
@@ -61,6 +62,7 @@ public class CategoryService {
             && c.getSortOrder().equals(r.sortOrder()) && c.getStatus().equals(r.status()))return dto(c);
         c.setName(name);c.setParentId(r.parentId());c.setSortOrder(r.sortOrder());c.setStatus(r.status());c.setUpdatedAt(LocalDateTime.now());
         if(id==null)categories.insert(c);else categories.updateById(c);
+        aiSync.syncAll();
         audit.record(admin,id==null?"CATEGORY_CREATE":"CATEGORY_UPDATE","CATEGORY",c.getId());return dto(c);
     }
     @Transactional public void delete(Long admin,Long id) {

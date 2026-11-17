@@ -99,6 +99,19 @@ class CatalogIntegrationTest {
  String productPath(JsonNode p){return "/api/v1/admin/products/"+p.path("id").asLong();}
  String publicPath(JsonNode p){return "/api/v1/public/products/"+p.path("id").asLong();}
  long scalar(String sql,Object...args){return db.queryForObject(sql,Long.class,args);}
+ @Test void consultationFieldsPersistClearAndRespectProductVersion()throws Exception {
+  JsonNode product=product(true);ObjectNode request=edit(product);
+  request.put("sweetnessDescription","清甜，未提供实测糖度");request.putArray("seasonalMonths").add(12).add(1).add(12);request.putArray("useCases").add("FRIEND_GIFT");request.put("giftBox",true);
+  JsonNode saved=call("PUT",productPath(product),request,admin,200);
+  assertEquals("清甜，未提供实测糖度",saved.path("sweetnessDescription").asText());assertEquals("[1,12]",saved.path("seasonalMonths").toString());assertTrue(saved.path("giftBox").asBoolean());
+  call("PUT",productPath(product),request,admin,409);
+  JsonNode preserved=call("PUT",productPath(saved),edit(saved),admin,200);assertEquals(saved.path("sweetnessDescription"),preserved.path("sweetnessDescription"));
+  JsonNode publicly=call("GET",publicPath(preserved),null,null,200);assertTrue(publicly.path("giftBox").asBoolean());assertEquals("[1,12]",publicly.path("seasonalMonths").toString());
+  ObjectNode clear=edit(preserved);clear.putNull("sweetnessDescription");clear.putArray("seasonalMonths");clear.putNull("useCases");clear.put("giftBox",false);
+  JsonNode cleared=call("PUT",productPath(preserved),clear,admin,200);assertTrue(cleared.path("sweetnessDescription").isNull());assertEquals("[]",cleared.path("seasonalMonths").toString());assertFalse(cleared.path("giftBox").asBoolean());
+  ObjectNode invalid=edit(cleared);invalid.putArray("seasonalMonths").add(1.5);call("PUT",productPath(cleared),invalid,admin,400);
+  assertEquals(12,cleared.path("skus").get(0).path("onHand").asInt());
+ }
  @Test void categoriesValidateHierarchyNamesAndReferences()throws Exception {
   call("POST","/api/v1/admin/categories",Map.of("name","third","parentId",leaf,"status",1,"sortOrder",0),admin,400);
   Map<String,Object> duplicate=new HashMap<>();duplicate.put("name","根"+label);duplicate.put("parentId",null);duplicate.put("status",1);duplicate.put("sortOrder",0);

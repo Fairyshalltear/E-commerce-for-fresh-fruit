@@ -14,12 +14,13 @@ import static com.fairyshalltear.freshfruit.catalog.CatalogDtos.*;
 import static com.fairyshalltear.freshfruit.catalog.CatalogErrors.*;
 @Service
 public class ProductService {
+    private final com.fairyshalltear.freshfruit.ai.knowledge.AiCatalogSynchronizer aiSync;
     private final FruitProductMapper products;private final ProductSkuMapper skus;private final SkuInventoryMapper stocks;
     private final CategoryService categories;private final ProductImageService images;private final InventoryService inventory;private final AuditService audit;
     public ProductService(FruitProductMapper products,ProductSkuMapper skus,SkuInventoryMapper stocks,CategoryService categories,
-                          ProductImageService images,InventoryService inventory,AuditService audit) {
+                          ProductImageService images,InventoryService inventory,AuditService audit,com.fairyshalltear.freshfruit.ai.knowledge.AiCatalogSynchronizer aiSync) {
         this.products=products;this.skus=skus;this.stocks=stocks;this.categories=categories;
-        this.images=images;this.inventory=inventory;this.audit=audit;
+        this.images=images;this.inventory=inventory;this.audit=audit;this.aiSync=aiSync;
     }
     public FruitProduct require(Long id) {
         FruitProduct p=products.selectById(id);if(p==null||p.getDeleted()==1)throw notFound();return p;
@@ -38,7 +39,9 @@ public class ProductService {
         return new AdminDetail(id,p.getName(),p.getCategoryId(),p.getDescription(),p.getOrigin(),p.getTaste(),p.getStorageMethod(),
                 p.getStatus(),p.getIsRecommended()==1,p.getRecommendSort(),p.getVersion(),
                 ir.stream().filter(i->i.getActive()==1).map(ProductImageService::dto).toList(),
-                ir.stream().filter(i->i.getActive()==0).map(ProductImageService::dto).toList(),dto);
+                ir.stream().filter(i->i.getActive()==0).map(ProductImageService::dto).toList(),dto,
+                p.getSweetnessDescription(),ProductConsultation.months(p.getSeasonalMonths()),
+                Integer.valueOf(1).equals(p.getIsGiftBox()),ProductConsultation.uses(p.getUseCases()));
     }
     @Transactional public AdminDetail save(Long admin,Long id,ProductRequest r) {
         categories.lockTree();
@@ -68,6 +71,7 @@ public class ProductService {
         }
         p.setName(r.name().trim());p.setCategoryId(r.categoryId());p.setDescription(text(r.description()));
         p.setOrigin(text(r.origin()));p.setTaste(text(r.taste()));p.setStorageMethod(text(r.storageMethod()));
+        ProductConsultation.apply(p,r.consultationAttributes());
         p.setIsRecommended(r.recommended()?1:0);p.setRecommendSort(r.recommendSort());p.setUpdatedAt(LocalDateTime.now());
         if(id==null)products.insert(p);else {p.setVersion(p.getVersion()+1);products.updateById(p);}
         // Temporary unique names allow swaps without replacing stable SKU identifiers.
@@ -85,6 +89,7 @@ public class ProductService {
         }
         images.bind(admin,p.getId(),r.imageIds());
         audit.record(admin,id==null?"PRODUCT_CREATE":"PRODUCT_UPDATE","PRODUCT",p.getId());
+        aiSync.sync(p.getId());
         return detail(p.getId());
     }
     @Transactional public AdminDetail status(Long admin,Long id,StatusRequest r) {
@@ -98,6 +103,7 @@ public class ProductService {
             p.setPublishedAt(LocalDateTime.now());
         }
         p.setStatus(r.status());p.setVersion(p.getVersion()+1);p.setUpdatedAt(LocalDateTime.now());products.updateById(p);
+        aiSync.sync(id);
         audit.record(admin,r.status()==1?"PRODUCT_PUBLISH":"PRODUCT_UNLIST","PRODUCT",id);return detail(id);
     }
     @Transactional public void delete(Long admin,Long id,Long expected) {
@@ -105,6 +111,7 @@ public class ProductService {
         for(ProductSku s:skuRows(id).stream().sorted(Comparator.comparing(ProductSku::getId)).toList())
             if(stocks.lock(s.getId()).getReserved()>0)throw conflict("商品仍有预留库存，不能删除");
         p.setDeleted(1);p.setStatus(0);p.setVersion(p.getVersion()+1);p.setUpdatedAt(LocalDateTime.now());products.updateById(p);
+        aiSync.sync(id);
         audit.record(admin,"PRODUCT_DELETE","PRODUCT",id);
     }
     private String text(String value){return value==null?"":value.trim();}

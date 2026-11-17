@@ -1,9 +1,9 @@
 import http, { type ApiResponse } from './http'
-import type { Category, ImageRef, Page, ProductCard, SearchQuery } from './catalog'
+import type { Category, ImageRef, Page, ProductCard, SearchQuery, ProductConsultation } from './catalog'
 export interface AdminSku { id?: number; specification: string; price: string; onHand: number; reserved?: number; availableStock?: number; lowStockThreshold: number; lowStock?: boolean; status: number; inventoryVersion?: number }
-export interface AdminProduct { id: number; name: string; categoryId: number; description: string; origin: string; taste: string; storageMethod: string; status: number; recommended: boolean; recommendSort: number; version: number; images: ImageRef[]; retainedImages: ImageRef[]; skus: AdminSku[] }
+export interface AdminProduct extends ProductConsultation { id: number; name: string; categoryId: number; description: string; origin: string; taste: string; storageMethod: string; status: number; recommended: boolean; recommendSort: number; version: number; images: ImageRef[]; retainedImages: ImageRef[]; skus: AdminSku[] }
 export interface SkuPayload { id?: number; specification: string; price: string; status: number; onHand?: number }
-export interface ProductPayload { name: string; categoryId: number; description: string; origin: string; taste: string; storageMethod: string; recommended: boolean; recommendSort: number; version?: number; imageIds: number[]; skus: SkuPayload[] }
+export interface ProductPayload extends Partial<ProductConsultation> { name: string; categoryId: number; description: string; origin: string; taste: string; storageMethod: string; recommended: boolean; recommendSort: number; version?: number; imageIds: number[]; skus: SkuPayload[] }
 export interface AdminCard { product: ProductCard; status: number; recommended: boolean; recommendSort: number; version: number; updatedAt: string }
 export interface CategoryPayload { name: string; parentId: number | null; status: number; sortOrder: number }
 export const adminCategories = async () => (await http.get<ApiResponse<Category[]>>('/api/v1/admin/categories')).data.data

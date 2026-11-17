@@ -28,7 +28,7 @@ import jakarta.validation.constraints.Size;
 @Validated
 public class AdminStaffController {
     private static final Set<String> MODULES = Set.of("PRODUCTS", "BUYERS", "ORDERS", "INVENTORY",
-            "AFTER_SALES", "CONTENT", "STATISTICS");
+            "AFTER_SALES", "CONTENT", "STATISTICS", "AI");
     private static final Set<String> OPERATIONS = Set.of("REFUND_EXECUTE", "PRODUCT_STATUS_CHANGE", "INVENTORY_ADJUST");
 
     private final JdbcTemplate jdbc;

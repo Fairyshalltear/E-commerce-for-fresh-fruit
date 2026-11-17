@@ -14,6 +14,13 @@ public class FruitProduct {
     private String origin;
     private String taste;
     private String storageMethod;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private String sweetnessDescription;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private String seasonalMonths;
+    private Integer isGiftBox;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private String useCases;
     private Integer status;
     private Integer isRecommended;
     private Integer recommendSort;
@@ -36,6 +43,14 @@ public class FruitProduct {
     public void setTaste(String value) { taste = value; }
     public String getStorageMethod() { return storageMethod; }
     public void setStorageMethod(String value) { storageMethod = value; }
+    public String getSweetnessDescription() { return sweetnessDescription; }
+    public void setSweetnessDescription(String value) { sweetnessDescription = value; }
+    public String getSeasonalMonths() { return seasonalMonths; }
+    public void setSeasonalMonths(String value) { seasonalMonths = value; }
+    public Integer getIsGiftBox() { return isGiftBox; }
+    public void setIsGiftBox(Integer value) { isGiftBox = value; }
+    public String getUseCases() { return useCases; }
+    public void setUseCases(String value) { useCases = value; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer value) { status = value; }
     public Integer getIsRecommended() { return isRecommended; }

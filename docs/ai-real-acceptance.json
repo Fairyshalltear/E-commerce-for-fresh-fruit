@@ -1,0 +1,218 @@
+{
+  "startedAt": "2026-11-17T17:51:01.214605",
+  "timezone": "Asia/Shanghai",
+  "checks": [
+    {
+      "name": "chat",
+      "answer": "连接成功",
+      "returnedModel": "qwen3.7-plus",
+      "usage": {
+        "promptTokens": 29,
+        "completionTokens": 44,
+        "totalTokens": 73
+      },
+      "success": true,
+      "elapsedMs": 1782
+    },
+    {
+      "name": "structuredIntent",
+      "scene": "RECOMMEND",
+      "returnedModel": "qwen3.7-plus",
+      "usage": {
+        "promptTokens": 205,
+        "completionTokens": 219,
+        "totalTokens": 424
+      },
+      "success": true,
+      "elapsedMs": 4138
+    },
+    {
+      "name": "nativeSse",
+      "answer": "流式连接成功",
+      "contentChunks": 2,
+      "firstContentMs": 1650,
+      "returnedModel": "qwen3.7-plus",
+      "usage": {
+        "promptTokens": 31,
+        "completionTokens": 54,
+        "totalTokens": 85
+      },
+      "success": true,
+      "elapsedMs": 1656
+    },
+    {
+      "name": "embedding",
+      "dimensions": 1024,
+      "returnedModel": "qwen3.7-text-embedding",
+      "usage": {
+        "promptTokens": 19,
+        "completionTokens": null,
+        "totalTokens": 19
+      },
+      "success": true,
+      "elapsedMs": 278,
+      "usageNote": "Embedding响应无生成completion_tokens字段，记录为缺失。"
+    },
+    {
+      "name": "fullVectorIndex",
+      "profileId": 1,
+      "status": "ACTIVE",
+      "indexedChunks": 3,
+      "retrievalMode": "HYBRID",
+      "hits": [
+        {
+          "title": "草莓冷藏保鲜说明",
+          "revision": 1,
+          "keywordScore": 0.2857142857142857,
+          "vectorScore": 0.8883338950121649
+        },
+        {
+          "title": "草莓保鲜标准FAQ",
+          "revision": 1,
+          "keywordScore": 0.2857142857142857,
+          "vectorScore": 0.9154519015673765
+        }
+      ],
+      "success": true,
+      "elapsedMs": 1087
+    },
+    {
+      "name": "ragTurn",
+      "requestId": 1,
+      "question": "草莓如何保鲜，冷藏之前要不要清洗？",
+      "status": "COMPLETED",
+      "mode": "LLM",
+      "retrievalMode": "HYBRID",
+      "answer": "您好！草莓建议冷藏保存，并保持干燥。冷藏之前不需要清洗，建议您在食用前再进行清洗哦。如果还有其他问题，随时联系我！",
+      "deltaFrames": 11,
+      "doneFrames": 1,
+      "firstDeltaMs": 4275,
+      "streamMs": 4731,
+      "sourceCount": 2,
+      "promptTokens": 307,
+      "completionTokens": 216,
+      "success": true,
+      "elapsedMs": 4760
+    },
+    {
+      "name": "ragTurn",
+      "requestId": 2,
+      "question": "储存草莓时还能一直湿着放吗？",
+      "status": "COMPLETED",
+      "mode": "LLM",
+      "retrievalMode": "HYBRID",
+      "answer": "您好！不能一直湿着放哦。草莓在储存时需要保持干燥，建议冷藏保存，并在食用前再进行清洗。如果您还有其他问题，随时联系我！",
+      "deltaFrames": 9,
+      "doneFrames": 1,
+      "firstDeltaMs": 3410,
+      "streamMs": 3813,
+      "sourceCount": 2,
+      "promptTokens": 358,
+      "completionTokens": 169,
+      "success": true,
+      "elapsedMs": 3820
+    },
+    {
+      "name": "ragTurn",
+      "requestId": 3,
+      "question": "草莓保鲜资料有没有提供具体实测糖度？",
+      "status": "COMPLETED",
+      "mode": "LLM",
+      "retrievalMode": "HYBRID",
+      "answer": "您好！草莓保鲜资料中没有提供具体的实测糖度哦。如果您还有其他问题，随时联系我！",
+      "deltaFrames": 5,
+      "doneFrames": 1,
+      "firstDeltaMs": 5223,
+      "streamMs": 5415,
+      "sourceCount": 3,
+      "promptTokens": 442,
+      "completionTokens": 266,
+      "success": true,
+      "elapsedMs": 5422
+    },
+    {
+      "name": "disabledBasicService",
+      "faq": {
+        "requestId": 1,
+        "question": "草莓怎么保存？",
+        "status": "COMPLETED",
+        "mode": "FAQ",
+        "retrievalMode": null,
+        "answer": "草莓保鲜标准FAQ\n草莓应冷藏保存，保持干燥，食用前清洗。",
+        "deltaFrames": 1,
+        "doneFrames": 1,
+        "firstDeltaMs": 17,
+        "streamMs": 30,
+        "sourceCount": 1,
+        "promptTokens": null,
+        "completionTokens": null
+      },
+      "guestBusiness": {
+        "requestId": 2,
+        "question": "我的订单到哪了？",
+        "status": "COMPLETED",
+        "mode": "BUSINESS",
+        "retrievalMode": null,
+        "answer": "登录后可查询本人订单状态和模拟物流。",
+        "deltaFrames": 1,
+        "doneFrames": 1,
+        "firstDeltaMs": 5,
+        "streamMs": 9,
+        "sourceCount": 0,
+        "promptTokens": null,
+        "completionTokens": null
+      },
+      "activeModel": false,
+      "externalGenerationCalls": 0,
+      "success": true,
+      "elapsedMs": 86
+    },
+    {
+      "name": "invalidCredentialDegradation",
+      "status": "DEGRADED",
+      "mode": "DEGRADED",
+      "answer": "当前使用基础咨询服务。你可以选择商品查看产地、口感和储存资料，查询本人订单或售后，设置推荐条件，或使用已发布FAQ的标准问法。这个问题暂时缺少可靠依据，请补充信息。",
+      "promptTokens": null,
+      "completionTokens": null,
+      "errorCategory": "invalid synthetic credential; raw error not exposed",
+      "success": true,
+      "elapsedMs": 471
+    }
+  ],
+  "environment": "isolated H2; source database read-only",
+  "configuration": {
+    "sourceVersion": 5,
+    "chatModel": "qwen3.7-plus",
+    "embeddingModel": "qwen3.7-text-embedding",
+    "dimensions": 1024,
+    "region": "cn-beijing",
+    "parameters": {
+      "temperature": 0.2,
+      "maxOutputTokens": 1200,
+      "historyTurns": 10,
+      "connectTimeoutSeconds": 10,
+      "firstContentSeconds": 20,
+      "idleTimeoutSeconds": 15,
+      "totalTimeoutSeconds": 90,
+      "buyerPerMinute": 10,
+      "guestPerMinute": 3,
+      "buyerDaily": 100,
+      "guestDaily": 20,
+      "globalDailyCalls": 1000
+    }
+  },
+  "priorOnlineStartedAt": "2026-11-17T17:49:20.581166",
+  "allPassed": true,
+  "finishedAt": "2026-11-17T17:51:09.716653",
+  "liveConfigurationCheck": {
+    "sourceVersion": 5,
+    "profileId": 1,
+    "profileConfigVersion": 5,
+    "profileModel": "qwen3.7-text-embedding",
+    "dimensions": 1024,
+    "status": "ACTIVE",
+    "knowledgeDocuments": 3,
+    "productionConfigurationChanged": false
+  },
+  "scopeNote": "在线能力、完整向量索引和RAG在隔离H2中使用当前配置快照实测；关闭和无效凭据只作用于隔离实例。当前运行环境另只读核对配置与ACTIVE索引一致。"
+}

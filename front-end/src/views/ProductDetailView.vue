@@ -17,7 +17,7 @@
         <p v-if="cartError" class="form-message-error" role="alert">{{ cartError }}</p>
         <button v-if="!auth.session || auth.session.account.role === 'BUYER'" class="favorite-button" :class="{ 'is-favorited': favorited }" :disabled="favoriteBusy" @click="toggleFavorite">{{ favoriteBusy ? '正在更新…' : favorited ? '♥ 已收藏 · 取消收藏' : '♡ 收藏商品' }}</button>
         <p v-if="favoriteError" class="form-message-error" role="alert">{{ favoriteError }}</p>
-        <div class="detail-facts"><div v-if="detail.taste"><span>口感特点</span><p>{{ detail.taste }}</p></div><div v-if="detail.storageMethod"><span>储存方法</span><p>{{ detail.storageMethod }}</p></div></div>
+        <button type="button" class="secondary-button" @click="ai.openWithContext({ productId: detail.id })">✦ 咨询这个商品</button><div class="detail-facts"><div v-if="detail.sweetnessDescription"><span>甜度描述</span><p>{{ detail.sweetnessDescription }}</p></div><div v-if="detail.seasonalMonths?.length"><span>应季月份</span><p>{{ detail.seasonalMonths.map(month => month + '月').join('、') }}</p></div><div v-if="detail.giftBox"><span>包装类型</span><p>水果礼盒</p></div><div v-if="detail.useCases?.length"><span>适用场景</span><p>{{ detail.useCases.map(value => productUseCases[value] ?? value).join('、') }}</p></div><div v-if="detail.taste"><span>口感特点</span><p>{{ detail.taste }}</p></div><div v-if="detail.storageMethod"><span>储存方法</span><p>{{ detail.storageMethod }}</p></div></div>
       </div></section>
       <section class="detail-description"><div class="catalog-heading"><h2>商品介绍</h2><span class="muted">认识这份新鲜</span></div><p class="plain-text">{{ detail.description || '暂无详细描述' }}</p></section>
       <section class="detail-reviews"><div class="catalog-heading"><h2>买家评价 <small>({{ detail.reviewSummary.count }})</small></h2><span class="rating-summary">{{ detail.reviewSummary.averageRating === null ? '暂无评分' : '★ ' + detail.reviewSummary.averageRating.toFixed(1) + ' / 5' }}</span></div>
@@ -35,9 +35,11 @@ import { useAuthStore } from '../stores/auth'
 import StoreHeader from '../components/StoreHeader.vue'
 import PageStatus from '../components/PageStatus.vue'
 import PagePagination from '../components/PagePagination.vue'
-import { productDetail, productReviews, price, imageUrl, errorMessage, type ProductDetail, type Review } from '../api/catalog'
+import { useAiStore } from '../stores/ai'
+import { productUseCases, productDetail, productReviews, price, imageUrl, errorMessage, type ProductDetail, type Review } from '../api/catalog'
 import { favoriteState, addFavorite, removeFavorite } from '../api/favorites'
 import { addCartItem } from '../api/cart'
+const ai = useAiStore()
 const route = useRoute(), router = useRouter(), auth = useAuthStore()
 const detail = ref<ProductDetail | null>(null), loading = ref(false), error = ref(''), mainImage = ref(''), selectedId = ref(0)
 const reviews = ref<Review[]>([]), reviewPage = ref(1), reviewTotal = ref(0), reviewsLoading = ref(false), reviewsError = ref('')

@@ -45,6 +45,7 @@ const router = createRouter({
           name: 'account-addresses',
           component: () => import('./views/BuyerAddressesView.vue'),
         },
+        { path: 'ai-history', name: 'account-ai-history', component: () => import('./views/BuyerAiHistoryView.vue') },
         { path: 'favorites', name: 'account-favorites', component: () => import('./views/BuyerFavoritesView.vue') },
         {
           path: 'security',
@@ -72,13 +73,18 @@ const router = createRouter({
         { path: 'reviews', name: 'admin-reviews', component: () => import('./views/AdminReviewsView.vue'), meta: { module: 'PRODUCTS' } },
         { path: 'analytics', name: 'admin-analytics', component: () => import('./views/AdminAnalyticsView.vue'), meta: { module: 'STATISTICS' } },
         { path: 'content', name: 'admin-content', component: () => import('./views/AdminContentView.vue'), meta: { module: 'CONTENT' } },
+        { path: 'ai/knowledge', component: () => import('./views/AdminAiKnowledgeView.vue'), meta: { module: 'AI' } },
+        { path: 'ai/conversations', component: () => import('./views/AdminAiRecordsView.vue'), meta: { module: 'AI' } },
+        { path: 'ai/rules', component: () => import('./views/AdminAiRulesView.vue'), meta: { module: 'AI' } },
+        { path: 'ai/statistics', component: () => import('./views/AdminAiStatisticsView.vue'), meta: { module: 'AI' } },
+        { path: 'ai/models', component: () => import('./views/AdminAiModelsView.vue'), meta: { ownerOnly: true } },
         { path: 'staff', name: 'admin-staff', component: () => import('./views/AdminStaffView.vue'), meta: { ownerOnly: true } },
         { path: 'audit-logs', name: 'admin-audit-logs', component: () => import('./views/AdminAuditLogsView.vue'), meta: { ownerOnly: true } },
       ],
     },
   ],
 })
-const moduleHome: Record<string, string> = { PRODUCTS: 'products', ORDERS: 'orders', INVENTORY: 'inventory', AFTER_SALES: 'after-sales', CONTENT: 'content', STATISTICS: 'analytics', BUYERS: 'buyers' }
+const moduleHome: Record<string, string> = { PRODUCTS: 'products', ORDERS: 'orders', INVENTORY: 'inventory', AFTER_SALES: 'after-sales', CONTENT: 'content', STATISTICS: 'analytics', BUYERS: 'buyers', AI: 'ai/knowledge' }
 
 router.beforeEach((to) => {
   if (!to.meta.requiresAuth) return true
@@ -90,12 +96,13 @@ router.beforeEach((to) => {
   if (to.meta.role && auth.session.account.role !== to.meta.role) {
     return { name: auth.session.account.role !== 'BUYER' ? 'admin' : 'account' }
   }
+  if (to.meta.role === 'BUYER' && auth.session.account.role === 'BUYER') return true
   if (auth.session.account.role === 'BUYER') return { name: 'account' }
   if (to.meta.ownerOnly && auth.session.account.role !== 'OWNER') return { name: 'admin' }
   if (to.meta.module && auth.session.account.role !== 'OWNER'
       && !auth.session.account.modulePermissions?.includes(to.meta.module)) return { name: 'admin' }
   if (to.path === '/admin') {
-    const first = ['PRODUCTS', 'ORDERS', 'INVENTORY', 'AFTER_SALES', 'CONTENT', 'STATISTICS', 'BUYERS']
+    const first = ['PRODUCTS', 'ORDERS', 'INVENTORY', 'AFTER_SALES', 'CONTENT', 'STATISTICS', 'BUYERS', 'AI']
       .find((module) => auth.session?.account.role === 'OWNER' || auth.session?.account.modulePermissions?.includes(module))
     return first ? { path: `/admin/${moduleHome[first]}` } : { name: 'login' }
   }

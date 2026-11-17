@@ -1,4 +1,16 @@
 spring:
+  ai:
+    model:
+      chat: none
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+    chat:
+      client:
+        enabled: false
   application:
     name: fresh-fruit-backend
   datasource:
@@ -22,6 +34,11 @@ server:
   port: ${SERVER_PORT:8080}
 
 freshfruit:
+  ai:
+    encryption-key: ${AI_CONFIG_ENCRYPTION_KEY:}
+    allowed-hosts: ${AI_ALLOWED_HOSTS:*.maas.aliyuncs.com,dashscope.aliyuncs.com,api.openai.com,api.deepseek.com}
+    allow-local-endpoints: ${AI_ALLOW_LOCAL_ENDPOINTS:false}
+    jobs-enabled: ${AI_JOBS_ENABLED:true}
   order:
     unpaid-timeout-minutes: ${ORDER_UNPAID_TIMEOUT_MINUTES:15}
     expiration-scan-ms: ${ORDER_EXPIRATION_SCAN_MS:60000}

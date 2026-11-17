@@ -78,7 +78,8 @@ public class CatalogService {
     @Transactional(readOnly=true) public PublicDetail detail(Long id) {
         reviews.visible(id);AdminDetail p=management.detail(id);
         return new PublicDetail(id,p.name(),p.categoryId(),categoryService.path(p.categoryId()),p.description(),p.origin(),p.taste(),p.storageMethod(),p.images(),
-                p.skus().stream().filter(s->s.status()==1).map(s->new Sku(s.id(),s.specification(),s.price(),s.availableStock())).toList(),reviews.summary(id));
+                p.skus().stream().filter(s->s.status()==1).map(s->new Sku(s.id(),s.specification(),s.price(),s.availableStock())).toList(),reviews.summary(id),
+                p.sweetnessDescription(),p.seasonalMonths(),p.giftBox(),p.useCases());
     }
     public List<Card> visibleCards(Collection<Long> ids) {
         if(ids.isEmpty())return List.of();

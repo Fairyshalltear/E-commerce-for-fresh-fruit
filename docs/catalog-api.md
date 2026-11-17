@@ -117,3 +117,9 @@ mvn -f back-end/pom.xml -Dtest=CatalogIntegrationTest,MySqlMigrationTest test
 ```
 
 迁移测试先应用 V1/V2 写账户及地址，再应用 V3 并重复 migrate，验证数据保留、根分类唯一生成列及外键；未设置 MySQL 环境时业务测试用 H2，迁移测试跳过。
+
+## AI 咨询结构化属性
+
+商品保存新增可选平级字段 `sweetnessDescription`（null或最多200字）、`seasonalMonths`（null或1–12整数数组，去重排序）、`giftBox`（boolean，默认false）、`useCases`（null或 DAILY/ELDER_GIFT/FRIEND_GIFT/BUSINESS_GIFT/FAMILY 数组）。旧请求遗漏字段保留旧资料；显式 null 或空数组清除，giftBox:false取消礼盒。详情输出相同字段，月份/用途无资料输出空数组。
+
+例如保存补充 `{"sweetnessDescription":"清甜，未提供实测糖度","seasonalMonths":[9,10],"giftBox":true,"useCases":["FRIEND_GIFT"]}`；同时仍需现有完整商品请求字段与正确version，SKU/库存规则不变。AI推荐以这些维护的资料硬筛选，月份/用途未知不视为满足所有条件；预算为候选规格单价乘明确份数，不自动放宽预算或应季要求。

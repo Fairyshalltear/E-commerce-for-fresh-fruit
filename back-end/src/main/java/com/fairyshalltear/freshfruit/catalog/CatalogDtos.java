@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import jakarta.validation.Valid;
@@ -33,8 +34,14 @@ public final class CatalogDtos {
                                  @NotNull Boolean recommended, @NotNull @Min(0) Integer recommendSort,
                                  @NotNull @Size(max=10) List<@NotNull @Positive Long> imageIds,
                                  @NotNull @Size(min=1,max=20) List<@NotNull @Valid SkuRequest> skus,
-                                 @Min(0) Long version) {
-        @JsonAnySetter public void unknown(String key, Object value) { throw new IllegalArgumentException("不允许写入字段: " + key); }
+                                 @Min(0) Long version, @JsonIgnore java.util.Map<String,Object> consultationAttributes) {
+        public ProductRequest {
+            consultationAttributes = new java.util.LinkedHashMap<>();
+        }
+        @JsonAnySetter public void unknown(String key, Object value) {
+            if (ProductConsultation.FIELDS.contains(key)) consultationAttributes.put(key, value);
+            else throw new IllegalArgumentException("不允许写入字段: " + key);
+        }
     }
     public record StatusRequest(@NotNull @Min(0) @Max(1) Integer status, @NotNull @Min(0) Long version) {}
     public record Query(@Size(max=100) String keyword, @Positive Long categoryId,
@@ -58,10 +65,12 @@ public final class CatalogDtos {
     public record ReviewSummary(long count, BigDecimal averageRating) {}
     public record PublicDetail(Long id, String name, Long categoryId, List<Category> categoryPath,
                                String description, String origin, String taste, String storageMethod,
-                               List<Image> images, List<Sku> skus, ReviewSummary reviewSummary) {}
+                               List<Image> images, List<Sku> skus, ReviewSummary reviewSummary,
+                               String sweetnessDescription, List<Integer> seasonalMonths, boolean giftBox, List<String> useCases) {}
     public record AdminDetail(Long id, String name, Long categoryId, String description, String origin, String taste,
                               String storageMethod, int status, boolean recommended, int recommendSort,
-                              long version, List<Image> images, List<Image> retainedImages, List<AdminSku> skus) {}
+                              long version, List<Image> images, List<Image> retainedImages, List<AdminSku> skus,
+                              String sweetnessDescription, List<Integer> seasonalMonths, boolean giftBox, List<String> useCases) {}
     public record Favorite(Long productId, String nameSnapshot, String mainImageSnapshot,
                            boolean available, String unavailableReason, Card product) {}
     public record FavoriteState(boolean favorited) {}

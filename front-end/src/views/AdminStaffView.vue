@@ -22,7 +22,7 @@ import { onMounted, ref } from 'vue'
 import http, { type ApiResponse } from '../api/http'
 interface Staff { id:number; username:string; displayName:string; enabled:boolean; modulePermissions:string[]; sensitivePermissions:string[] }
 interface Editor { id?:number; username:string; displayName:string; password:string; modulePermissions:string[]; sensitivePermissions:string[] }
-const modules=[{key:'PRODUCTS',label:'商品'},{key:'BUYERS',label:'买家'},{key:'ORDERS',label:'订单'},{key:'INVENTORY',label:'库存'},{key:'AFTER_SALES',label:'售后'},{key:'CONTENT',label:'内容'},{key:'STATISTICS',label:'统计'}]
+const modules=[{key:'PRODUCTS',label:'商品'},{key:'BUYERS',label:'买家'},{key:'ORDERS',label:'订单'},{key:'INVENTORY',label:'库存'},{key:'AFTER_SALES',label:'售后'},{key:'CONTENT',label:'内容'},{key:'STATISTICS',label:'统计'},{key:'AI',label:'AI问答管理'}]
 const operations=[{key:'REFUND_EXECUTE',label:'执行退款'},{key:'PRODUCT_STATUS_CHANGE',label:'商品上架/下架'},{key:'INVENTORY_ADJUST',label:'直接调整库存'}]
 const staff=ref<Staff[]>([]), loading=ref(false), saving=ref(false), error=ref(''), saveError=ref(''), editing=ref<Editor|null>(null), resetTarget=ref<Staff|null>(null), newPassword=ref('')
 async function load(){loading.value=true;error.value='';try{staff.value=(await http.get<ApiResponse<Staff[]>>('/api/v1/admin/staff')).data.data}catch{error.value='店员列表加载失败。'}finally{loading.value=false}}
@@ -31,7 +31,7 @@ function startEdit(person:Staff){saveError.value='';editing.value={id:person.id,
 async function save(){if(!editing.value)return;saving.value=true;saveError.value='';try{const e=editing.value;const payload={displayName:e.displayName,modulePermissions:e.modulePermissions,sensitivePermissions:e.sensitivePermissions};if(e.id)await http.put(`/api/v1/admin/staff/${e.id}`,payload);else await http.post('/api/v1/admin/staff',{...payload,username:e.username,password:e.password});editing.value=null;await load()}catch{saveError.value='保存失败，请检查账号与权限后重试。'}finally{saving.value=false}}
 async function toggle(person:Staff){try{await http.patch(`/api/v1/admin/staff/${person.id}/enabled`,{enabled:!person.enabled});await load()}catch{error.value='账号状态更新失败。'}}
 async function resetPassword(){if(!resetTarget.value)return;saving.value=true;saveError.value='';try{await http.post(`/api/v1/admin/staff/${resetTarget.value.id}/credentials`,{password:newPassword.value});resetTarget.value=null;newPassword.value=''}catch{saveError.value='凭据重置失败，请重试。'}finally{saving.value=false}}
-function labels(values:string[]){return values.length?values.map(x=>({PRODUCTS:'商品',BUYERS:'买家',ORDERS:'订单',INVENTORY:'库存',AFTER_SALES:'售后',CONTENT:'内容',STATISTICS:'统计',REFUND_EXECUTE:'退款',PRODUCT_STATUS_CHANGE:'上下架',INVENTORY_ADJUST:'库存调整'} as Record<string,string>)[x]??x).join('、'):'无'}
+function labels(values:string[]){return values.length?values.map(x=>({PRODUCTS:'商品',BUYERS:'买家',ORDERS:'订单',INVENTORY:'库存',AFTER_SALES:'售后',CONTENT:'内容',STATISTICS:'统计',AI:'AI问答管理',REFUND_EXECUTE:'退款',PRODUCT_STATUS_CHANGE:'上下架',INVENTORY_ADJUST:'库存调整'} as Record<string,string>)[x]??x).join('、'):'无'}
 onMounted(load)
 </script>
 <style scoped>

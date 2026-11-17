@@ -52,7 +52,8 @@ public class AdminAuthorizationInterceptor implements HandlerInterceptor {
 
         String route = path.substring("/api/v1/admin/".length());
         if (route.equals("auth/me")) return null;
-        if (route.startsWith("staff") || route.startsWith("audit-logs")) return "OWNER_ONLY";
+        if (route.startsWith("staff") || route.startsWith("audit-logs")
+                || route.equals("ai/models") || route.startsWith("ai/models/")) return "OWNER_ONLY";
 
         String module = module(route);
         if (module == null) return "UNCLASSIFIED_ADMIN_ENDPOINT";
@@ -67,6 +68,10 @@ public class AdminAuthorizationInterceptor implements HandlerInterceptor {
     }
 
     private String module(String route) {
+        if (route.equals("ai/knowledge") || route.startsWith("ai/knowledge/")
+                || route.equals("ai/conversations") || route.startsWith("ai/conversations/")
+                || route.equals("ai/rules") || route.startsWith("ai/rules/")
+                || route.equals("ai/statistics") || route.startsWith("ai/statistics/")) return "AI";
         if (route.startsWith("products/") || route.equals("products") || route.startsWith("categories")
                 || route.startsWith("product-images") || route.startsWith("reviews")) return "PRODUCTS";
         if (route.startsWith("buyers")) return "BUYERS";
