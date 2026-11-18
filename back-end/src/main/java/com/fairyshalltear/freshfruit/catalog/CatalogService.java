@@ -67,12 +67,8 @@ public class CatalogService {
     }
     @Transactional(readOnly=true) public List<Card> recommendations() {
         Query q=new Query(null,null,null,null,"NEWEST",1,8,null,null);
-        List<FruitProduct> rows=new ArrayList<>(products.selectList(filter(q,true).eq("is_recommended",1).orderByAsc("recommend_sort").orderByDesc("id").last("LIMIT 8")));
-        if(rows.size()<8) {
-            QueryWrapper<FruitProduct> fallback=filter(q,true);
-            if(!rows.isEmpty())fallback.notIn("id",rows.stream().map(FruitProduct::getId).toList());
-            rows.addAll(products.selectList(fallback.orderByDesc("published_at","id").last("LIMIT "+(8-rows.size()))));
-        }
+        List<FruitProduct> rows=products.selectList(filter(q,true).eq("is_recommended",1)
+                .orderByAsc("recommend_sort").orderByDesc("id").last("LIMIT 8"));
         return cards(rows);
     }
     @Transactional(readOnly=true) public PublicDetail detail(Long id) {

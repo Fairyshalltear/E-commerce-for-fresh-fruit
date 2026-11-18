@@ -92,16 +92,20 @@
 - **WHEN** 管理员删除含预留库存的商品
 - **THEN** 系统拒绝删除，保留商品及全部关联数据
 
-### Requirement: Homepage recommendations combine manual selection and recent products
-系统 SHALL 允许管理员设置商品推荐标记和排序值。首页默认 SHALL 展示最多 8 件公开可见商品，先按推荐排序升序、商品标识倒序选取推荐商品，不足时按上架时间倒序、商品标识倒序补充其他商品；结果不得重复。推荐及补充商品 SHALL 遵循相同可见性规则，允许展示售罄商品并标记售罄。
+### Requirement: Homepage recommendations use manual selection only
+系统 SHALL 允许管理员设置商品推荐标记和排序值。首页推荐区 SHALL 仅展示最多 8 件同时满足公开可见性规则且已明确标记为推荐的商品，并按推荐排序升序、商品标识倒序排列。未标记为推荐的商品 SHALL NOT 出现在首页推荐区；推荐数量不足时返回实际数量，不以其他商品补足。推荐商品允许售罄并标记售罄。
 
-#### Scenario: Manual recommendations are supplemented
+#### Scenario: Homepage shows only manually selected recommendations
 - **WHEN** 当前有 3 件可见推荐商品及至少 5 件其他可见商品
-- **THEN** 首页先按设置顺序展示 3 件推荐，再补充 5 件最新上架商品，不重复展示
+- **THEN** 首页只展示按设置顺序排列的 3 件推荐商品
+
+#### Scenario: No products are manually recommended
+- **WHEN** 当前没有可见推荐商品
+- **THEN** 首页推荐接口返回空列表，不展示未推荐商品
 
 #### Scenario: Recommended product becomes unavailable
 - **WHEN** 推荐商品下架、删除或所属分类不可用
-- **THEN** 它不再出现在推荐结果中，系统从其他可见商品中补足，数据不足时返回实际数量
+- **THEN** 它不再出现在推荐结果中，接口返回其余可见推荐商品，数据不足时返回实际数量
 
 ### Requirement: Visitors browse and search with combined filters
 系统 SHALL 无需登录即可提供公开分类树和商品分页搜索，支持商品名称或描述的关键词、分类、最低价、最高价组合筛选，以及最新上架、价格升序和降序排序。关键词 SHALL 按文本匹配而非查询语法解释；一级分类筛选包含其有效二级分类。默认 SHALL 为最新上架排序，所有排序 SHALL 以商品标识补充稳定顺序。

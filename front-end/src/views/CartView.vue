@@ -1,7 +1,6 @@
 <template>
-  <main class="page-shell cart-page">
-    <StoreHeader />
-    <div class="account-heading"><div><p class="eyebrow">买家账户</p><h1>购物车</h1></div><RouterLink class="text-action" to="/products">继续选购</RouterLink></div>
+  <section class="account-section cart-page">
+    <div class="section-heading"><div><h2>购物车</h2></div><RouterLink class="text-action" to="/products">继续选购</RouterLink></div>
     <p v-if="notice" class="form-message-success" role="status">{{ notice }}</p>
     <PageStatus :loading="loading" :error="error" :empty="!cart?.items.length" empty-text="购物车还是空的，去挑选一些新鲜水果吧。" @retry="load" />
     <template v-if="cart?.items.length && !loading && !error">
@@ -19,13 +18,12 @@
       </div>
       <div class="cart-summary"><p v-if="checkoutMessage" :class="checkoutValid ? 'form-message-success' : 'form-message-error'" role="status">{{ checkoutMessage }}</p><div><span>已选 {{ cart.selectedCount }} 件商品</span><strong>商品合计 <b>¥{{ price(cart.selectedSubtotal) }}</b></strong></div><p class="muted">运费 ¥{{ price(cart.shippingFee) }}</p><button class="primary-button" :disabled="checkoutBusy || !cart.selectedCount" @click="validateCheckout">{{ checkoutBusy ? '校验中…' : '去结算' }}</button></div>
     </template>
-  </main>
+  </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import StoreHeader from '../components/StoreHeader.vue'
 import PageStatus from '../components/PageStatus.vue'
 import { errorMessage, imageUrl, price } from '../api/catalog'
 import { acceptCartPrice, getCart, removeCartItem, selectAllCartItems, selectCartItem, updateCartQuantity, validateCartCheckout, type Cart, type CartItem } from '../api/cart'

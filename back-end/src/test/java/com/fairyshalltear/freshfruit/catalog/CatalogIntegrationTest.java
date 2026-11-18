@@ -274,16 +274,17 @@ class CatalogIntegrationTest {
   assertEquals(threshold+3,scalar("SELECT low_stock_threshold FROM sku_inventory WHERE sku_id=?",skuId));
   assertEquals(1,scalar("SELECT COUNT(*) FROM admin_operation_log WHERE admin_id=? AND result='DENIED'",staffId));
  }
- @Test void recommendationsPrioritizeManualRankAndSupplementWithoutDuplicates()throws Exception {
+ @Test void recommendationsReturnOnlyManuallySelectedProductsInRankOrder()throws Exception {
   db.update("UPDATE fruit_product SET is_recommended=0");
+  assertTrue(call("GET","/api/v1/public/products/recommendations",null,null,200).isEmpty());
   List<Long> ids=new ArrayList<>();
   for(int i=0;i<9;i++) {
    JsonNode p=product(true);ids.add(p.path("id").asLong());
    if(i<2){ObjectNode body=edit(p);body.put("recommended",true);body.put("recommendSort",i);call("PUT",productPath(p),body,admin,200);}
   }
-  JsonNode result=call("GET","/api/v1/public/products/recommendations",null,null,200);assertEquals(8,result.size());
+  JsonNode result=call("GET","/api/v1/public/products/recommendations",null,null,200);assertEquals(2,result.size());
   assertEquals(ids.get(0).longValue(),result.get(0).path("id").asLong());assertEquals(ids.get(1).longValue(),result.get(1).path("id").asLong());
-  Set<Long> unique=new HashSet<>();result.forEach(p->unique.add(p.path("id").asLong()));assertEquals(8,unique.size());
+  Set<Long> unique=new HashSet<>();result.forEach(p->unique.add(p.path("id").asLong()));assertEquals(2,unique.size());
  }
  @Test void adminPaginationCombinesFiltersWithoutDuplicatingSkus()throws Exception {
   JsonNode first=product(false),second=product(false),third=product(false);

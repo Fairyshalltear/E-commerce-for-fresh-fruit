@@ -5,6 +5,7 @@ declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean
     role?: AccountRole
+    loginRole?: 'BUYER' | 'ADMIN'
     module?: string
     ownerOnly?: boolean
   }
@@ -20,12 +21,19 @@ const router = createRouter({
     },
     { path: '/products', name: 'products', component: () => import('./views/ProductsView.vue') },
     { path: '/products/:productId', name: 'product-detail', component: () => import('./views/ProductDetailView.vue') },
-    { path: '/cart', name: 'cart', component: () => import('./views/CartView.vue'), meta: { requiresAuth: true, role: 'BUYER' } },
+    { path: '/cart', name: 'cart', redirect: { name: 'account-cart' } },
     { path: '/checkout', name: 'checkout', component: () => import('./views/BuyerCheckoutView.vue'), meta: { requiresAuth: true, role: 'BUYER' } },
     {
       path: '/login',
       name: 'login',
       component: () => import('./views/AuthView.vue'),
+      meta: { loginRole: 'BUYER' },
+    },
+    {
+      path: '/admin/login',
+      name: 'admin-login',
+      component: () => import('./views/AuthView.vue'),
+      meta: { loginRole: 'ADMIN' },
     },
     {
       path: '/account',
@@ -34,19 +42,20 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'BUYER' },
       children: [
         { path: '', name: 'account-home', redirect: { name: 'account-profile' } },
-        { path: 'orders', name: 'account-orders', component: () => import('./views/BuyerOrdersView.vue') },
         {
           path: 'profile',
           name: 'account-profile',
           component: () => import('./views/BuyerProfileView.vue'),
         },
+        { path: 'orders', name: 'account-orders', component: () => import('./views/BuyerOrdersView.vue') },
+        { path: 'cart', name: 'account-cart', component: () => import('./views/CartView.vue') },
+        { path: 'favorites', name: 'account-favorites', component: () => import('./views/BuyerFavoritesView.vue') },
         {
           path: 'addresses',
           name: 'account-addresses',
           component: () => import('./views/BuyerAddressesView.vue'),
         },
         { path: 'ai-history', name: 'account-ai-history', component: () => import('./views/BuyerAiHistoryView.vue') },
-        { path: 'favorites', name: 'account-favorites', component: () => import('./views/BuyerFavoritesView.vue') },
         {
           path: 'security',
           name: 'account-security',
@@ -87,12 +96,18 @@ const router = createRouter({
 const moduleHome: Record<string, string> = { PRODUCTS: 'products', ORDERS: 'orders', INVENTORY: 'inventory', AFTER_SALES: 'after-sales', CONTENT: 'content', STATISTICS: 'analytics', BUYERS: 'buyers', AI: 'ai/knowledge' }
 
 router.beforeEach((to) => {
-  if (!to.meta.requiresAuth) return true
-
   const auth = useAuthStore()
-  if (!auth.session) {
-    return { name: 'login', query: { redirect: to.fullPath } }
+  const isAdminPath = to.path === '/admin' || to.path.startsWith('/admin/')
+
+  if (to.meta.loginRole) {
+    if (!auth.session) return true
+    return { path: auth.session.account.role === 'BUYER' ? '/account' : '/admin' }
   }
+  if (!to.meta.requiresAuth) return true
+  if (!auth.session) {
+    return { name: isAdminPath ? 'admin-login' : 'login', query: { redirect: to.fullPath } }
+  }
+  if (isAdminPath && auth.session.account.role === 'BUYER') return { name: 'account' }
   if (to.meta.role && auth.session.account.role !== to.meta.role) {
     return { name: auth.session.account.role !== 'BUYER' ? 'admin' : 'account' }
   }

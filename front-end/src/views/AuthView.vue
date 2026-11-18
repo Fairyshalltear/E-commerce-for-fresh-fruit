@@ -5,12 +5,7 @@
     <section class="auth-panel" aria-labelledby="auth-title">
       <p class="eyebrow">鲜果集账户</p>
       <h1 id="auth-title">{{ isRegister ? '创建买家账户' : role === 'ADMIN' ? '管理员登录' : '买家登录' }}</h1>
-      <p class="auth-intro">{{ role === 'ADMIN' ? '使用本地配置的管理员账户进入后台。' : '登录后管理地址、购物车和订单。' }}</p>
-
-      <div class="role-switch" aria-label="账户类型">
-        <button type="button" :aria-pressed="role === 'BUYER'" @click="setRole('BUYER')">买家</button>
-        <button type="button" :aria-pressed="role === 'ADMIN'" @click="setRole('ADMIN')">管理员</button>
-      </div>
+      <p class="auth-intro">{{ role === 'ADMIN' ? '使用管理端账号进入运营后台。' : '登录后管理地址、购物车和订单。' }}</p>
 
       <form class="auth-form" @submit.prevent="submit">
         <template v-if="role === 'BUYER' && isRegister">
@@ -62,7 +57,7 @@
 
 <script setup lang="ts">
 import axios from 'axios'
-import { ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 type LoginRole = 'BUYER' | 'ADMIN'
@@ -70,7 +65,7 @@ type LoginRole = 'BUYER' | 'ADMIN'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const role = ref<LoginRole>(route.query.role === 'admin' ? 'ADMIN' : 'BUYER')
+const role = computed<LoginRole>(() => route.meta.loginRole === 'ADMIN' ? 'ADMIN' : 'BUYER')
 const isRegister = ref(false)
 const identity = ref('')
 const username = ref('')
@@ -79,17 +74,6 @@ const nickname = ref('')
 const password = ref('')
 const busy = ref(false)
 const errorMessage = ref('')
-
-watch(() => route.query.role, (value) => {
-  setRole(value === 'admin' ? 'ADMIN' : 'BUYER')
-})
-
-function setRole(nextRole: LoginRole) {
-  role.value = nextRole
-  isRegister.value = false
-  errorMessage.value = ''
-  password.value = ''
-}
 
 function toggleMode() {
   isRegister.value = !isRegister.value
